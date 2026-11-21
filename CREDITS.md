@@ -2,7 +2,7 @@
 
 ## 3D models
 
-Every 3D model in this package comes from the SenseWeaver asset pack (230 models, pack of 2026-11-12): the rooms of the LLAP page's Sensing World, the Fifteen Sensing Spaces (`pages/sensing-world/`) and the asset gallery (`pages/asset-gallery/`). Each was scaled to its real size, recentred, compressed and recoloured to the simulators' studio palette; the credit line says what else was changed. The gallery shows each model with its credit, licence and original page.
+Every 3D model on this page comes from the SenseWeaver asset pack (pack of 2026-11-12): the parts of the scene and the rooms of the Sensing World. Each model was scaled to its real size, recentred, compressed and recoloured to the simulators' studio palette. The credit line of a model gives the other changes. The table gives all the models of the pack; the page uses some of them.
 
 - CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/): the credit line below is the attribution.
 - CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/): no attribution is required; the source is named anyway.
