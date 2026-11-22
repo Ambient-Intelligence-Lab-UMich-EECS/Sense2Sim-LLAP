@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- the tab's icon: the SVG where a browser takes one, the picture (made from it by make-icon.mjs) elsewhere -->
+<link rel="icon" href="favicon.png" sizes="32x32" type="image/png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- page:begin -->
+<title>Sense2Sim · LLAP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one pinned stage under a slim bar; the page's scroll drives one scene: three first pages,
+   the wall of papers, the Sensing Universe, the Sensing World as a point cloud, then two entrances side by side.
+   Words keep to a band of their own; the scene is framed clear of it. One look: the night sky. */
+:root {
+  color-scheme: dark;
+  --bg: #000000; --ink: #f5f5f7; --ink-2: #a1a1a6; --ink-3: #6e6e73;
+  --line: rgba(255, 255, 255, 0.16); --line-2: rgba(255, 255, 255, 0.32); --card: rgba(255, 255, 255, 0.035);
+  --link: #2997ff;
+  --acoustic: #d9f272; --rf: #6b98ff; --optical: #ff8a5b; --electric: #c7a2ff; --magnetic: #f0c674; --mechanical: #aab5c7;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Inter, Roboto, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --navh: calc(48px + env(safe-area-inset-top, 0px));
+  --gutter-l: max(24px, env(safe-area-inset-left, 0px)); --gutter-r: max(24px, env(safe-area-inset-right, 0px));
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.47 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; text-decoration: none; }
+a:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; border-radius: 6px; }
+
+/* the bar: solid, so nothing of the scene is ever under its words */
+.nav { position: fixed; inset: 0 0 auto 0; z-index: 5; height: var(--navh); padding-top: env(safe-area-inset-top, 0px);
+  padding-left: var(--gutter-l); padding-right: var(--gutter-r);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.nav .brand { font-weight: 600; font-size: 22px; letter-spacing: -0.015em; }
+.nav nav { display: flex; gap: clamp(14px, 3vw, 36px); font-size: 17px; color: var(--ink-2); white-space: nowrap; }
+.nav nav a:hover { color: var(--ink); }
+
+/* without the scene (no WebGL, or less motion asked for): the words and the two entrances, in the page's flow */
+.track { padding-top: var(--navh); }
+.stage { position: relative; padding: clamp(36px, 8vh, 96px) 0 48px; }
+#gl, #labels { display: none; }
+.cap { margin: 0 auto; padding-left: var(--gutter-l); padding-right: var(--gutter-r); text-align: center; }
+.cap h1, .cap h2 { margin: 0 auto; font-weight: 600; letter-spacing: -0.03em; line-height: 1.06; text-wrap: balance;
+  background: linear-gradient(180deg, #ffffff 30%, #b9bcc6 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cap h1 { font-size: clamp(26px, min(3.8vw, 6.4vh), 58px); max-width: 24em; line-height: 1.12; letter-spacing: -0.022em; }
+.cap h2 { font-size: clamp(42px, min(6vw, 9.6vh), 92px); }
+.cap p { margin: 12px auto 0; max-width: 40ch; color: var(--ink-2); font-size: clamp(19px, min(2vw, 3.4vh), 30px); line-height: 1.34; text-wrap: balance; }
+/* the name is the page's largest word; the line under it says what it does */
+.cap .eyebrow { margin: 0 0 8px; max-width: none; font-size: clamp(54px, min(7vw, 11.5vh), 112px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.08;
+  background: linear-gradient(90deg, var(--acoustic), var(--rf) 38%, var(--electric) 68%, var(--optical)); -webkit-background-clip: text; background-clip: text; color: transparent; display: inline-block; }
+.cap .cue { display: none; }
+#cap-uni, #cap-world { display: none; }
+
+.gates { margin-top: clamp(36px, 7vh, 72px); padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
+.gate-row { display: flex; gap: clamp(16px, 2.4vw, 32px); width: min(1480px, 100%); margin: 0 auto; }
+.gate { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.gate-media { display: block; position: relative; overflow: hidden; width: 100%; aspect-ratio: 16 / 10; max-height: 46vh; border: 1px solid var(--line); border-radius: 28px; background: var(--card);
+  transition: border-color 0.35s ease, background-color 0.35s ease; }
+/* (without the scene the entrances are not left empty: the galaxies as soft lights, the world as a field of points) */
+.gate-media::before { content: ""; position: absolute; inset: 0; }
+#gate-uni .gate-media::before { background:
+  radial-gradient(13% 20% at 59% 32%, rgba(107, 152, 255, 0.6), transparent), radial-gradient(9% 14% at 85% 50%, rgba(217, 242, 114, 0.5), transparent),
+  radial-gradient(8% 13% at 73% 73%, rgba(255, 138, 91, 0.55), transparent), radial-gradient(6% 10% at 36% 77%, rgba(199, 162, 255, 0.55), transparent),
+  radial-gradient(5.5% 9% at 11% 59%, rgba(170, 181, 199, 0.5), transparent), radial-gradient(5% 8% at 23% 37%, rgba(240, 198, 116, 0.55), transparent),
+  radial-gradient(2.5% 4% at 48% 54%, rgba(255, 255, 255, 0.5), transparent); }
+#gate-world .gate-media::before { background: radial-gradient(circle, rgba(150, 196, 255, 0.8) 1px, transparent 1.7px) 0 0 / 11px 11px;
+  -webkit-mask-image: radial-gradient(40% 30% at 50% 56%, #000 55%, transparent 100%); mask-image: radial-gradient(40% 30% at 50% 56%, #000 55%, transparent 100%); }
+.gate:hover .gate-media, .gate:focus-visible .gate-media { border-color: var(--line-2); background: rgba(255, 255, 255, 0.06); }
+.gate-text { display: grid; gap: 4px; padding: 0 6px; }
+.gate-text strong { font-size: clamp(28px, 3.3vw, 58px); font-weight: 600; letter-spacing: -0.025em; line-height: 1.12; }
+.gate-text span { color: var(--ink-2); font-size: clamp(17px, 1.7vw, 28px); line-height: 1.36; }
+/* (the whole entrance is the link: no "Enter" line under it) */
+.gate-text strong { transition: color 0.3s ease; }
+.gate:hover .gate-text strong, .gate:focus-visible .gate-text strong { color: var(--link); }
+.madeby { margin: 28px auto 0; max-width: 70ch; text-align: center; color: var(--ink-3); font-size: clamp(12.5px, 1.05vw, 17px); line-height: 1.4; }
+
+/* with the scene: the stage pinned, the page's length is the story's */
+.live .track { height: 1500vh; }
+.live .stage { position: sticky; top: var(--navh); height: calc(100vh - var(--navh)); height: calc(100dvh - var(--navh)); padding: 0; overflow: hidden; }
+.live #gl { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+.live #labels { display: block; position: absolute; inset: 0; pointer-events: none; }
+.live .cap { position: absolute; left: 0; right: 0; top: clamp(18px, 4.4vh, 52px); opacity: 0; visibility: hidden; will-change: opacity, transform; pointer-events: none; }
+.live #cap-uni, .live #cap-world { display: block; }
+.live .cap .cue { display: inline-flex; align-items: center; gap: 9px; margin-top: 16px; color: var(--ink-3); font-size: 16px; letter-spacing: 0.02em; }
+.live .cap .cue svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; animation: nudge 1.9s ease-in-out infinite; }
+@keyframes nudge { 0%, 100% { transform: translateY(-2px); opacity: 0.55; } 50% { transform: translateY(3px); opacity: 1; } }
+.live .gates { position: absolute; inset: 0; margin: 0; display: flex; flex-direction: column; justify-content: center; opacity: 0; visibility: hidden; }
+.live .gate-media { background: transparent; }
+.live .gate-media::before { display: none; }
+.live .gate-text { will-change: transform, opacity; opacity: 0; }
+.live .madeby { position: absolute; left: var(--gutter-l); right: var(--gutter-r); bottom: max(14px, env(safe-area-inset-bottom, 0px)); margin: 0 auto; }
+
+/* the galaxies' names, and a few papers' names at a time by their stars, drawn in the scene's own place */
+.glabel, .slabel { position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform, opacity; opacity: 0; }
+.glabel { font: 600 clamp(15px, 1.3vw, 23px)/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; transform-origin: 0 0; }
+.slabel.me { color: var(--acoustic); font-weight: 700; text-shadow: 0 0 10px #000, 0 0 3px #000; }
+.slabel { font: 600 clamp(15px, 1.2vw, 21px)/1.1 var(--sans); letter-spacing: -0.01em; color: var(--ink); text-shadow: 0 0 6px #000, 0 0 2px #000; }
+
+/* ---- the opening of one simulation: how it works, the authors' check, the way in (Sense2Sim kit, opening mock) */
+.navgo { color: var(--ink) !important; font-weight: 600; }
+.cap .thispaper { margin-top: 18px; max-width: 60ch; font-size: clamp(16px, min(1.5vw, 2.6vh), 22px); color: var(--ink-2); }
+.cap .thispaper b { color: var(--acoustic); font-weight: 600; }
+.how .howhead { text-align: center; margin: 0 auto clamp(10px, 2.4vh, 28px); padding: 0 var(--gutter-r) 0 var(--gutter-l); }
+.how .howeye { margin: 0; font: 600 clamp(13px, 1vw, 16px)/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+.how .howhead h2 { margin: 10px 0 0; font-weight: 600; letter-spacing: -0.03em; font-size: clamp(26px, min(3.2vw, 5vh), 52px); line-height: 1.1;
+  background: linear-gradient(180deg, #ffffff 30%, #b9bcc6 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.howgrid { position: relative; display: grid; width: min(1560px, 100%); margin: 0 auto; gap: clamp(12px, 1.6vw, 26px) clamp(18px, 3vw, 54px);
+  grid-template-columns: 0.72fr 1.15fr 1fr 1.1fr; grid-template-rows: auto auto; grid-template-areas: "paper uni assets sim" "paper uni world sim"; align-items: center; }
+.howflow { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.hnode { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; transition: opacity .5s ease, filter .5s ease; }
+.hnode[data-n="0"] { grid-area: paper; } #gate-uni { grid-area: uni; } #node-assets { grid-area: assets; } #gate-world { grid-area: world; } #node-sim { grid-area: sim; }
+.how .gate-media, .hmedia { display: block; position: relative; overflow: hidden; width: 100%; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.02); }
+#gate-uni .gate-media { aspect-ratio: 4 / 5; max-height: 52vh; }
+#node-assets .hmedia, #gate-world .gate-media { aspect-ratio: 16 / 9; max-height: 22vh; }
+.hsim .hmedia { aspect-ratio: 16 / 10; max-height: 34vh; }
+.hpaper .hmedia { aspect-ratio: 0.773; max-height: 30vh; background: #f8f8f4; border-color: transparent; }
+.hsheet { position: absolute; inset: 9% 10%; display: flex; flex-direction: column; gap: 6px; }
+.hsheet b { color: #16181c; font: 700 clamp(10px, .82vw, 14px)/1.2 "Helvetica Neue", Helvetica, Arial, sans-serif; text-align: center; margin-bottom: 8px; }
+.hsheet i { display: block; height: 5px; border-radius: 2px; background: #c9cbd0; } .hsheet i:nth-child(3) { width: 80%; } .hsheet i:nth-child(5) { width: 64%; }
+.hsimpic img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
+.hassets svg { position: absolute; inset: 6% 10%; width: 80%; height: 88%; }
+.hassets .dev * { fill: none; stroke: #b9c8ff; stroke-width: 2; } .hassets .dev .scr { stroke: #6b98ff; } .hassets .hand path { stroke: var(--acoustic); }
+.hassets .dev { filter: drop-shadow(0 0 6px rgba(107,152,255,.55)); }
+.htext { display: grid; gap: 2px; padding: 0 4px; }
+.htext em { font: 600 13px/1 var(--mono); font-style: normal; letter-spacing: .12em; color: var(--ink-3); }
+.htext strong { font-size: clamp(18px, 1.55vw, 28px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.htext > span { color: var(--ink-2); font-size: clamp(13.5px, 1vw, 17px); line-height: 1.35; }
+.hsim .htext strong { background: linear-gradient(90deg, var(--acoustic), var(--rf)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hnode.dim { opacity: .28; filter: saturate(.4); } .hnode.lit .hmedia, .hnode.lit .gate-media { border-color: var(--line-2); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 44px rgba(107,152,255,.22); }
+.howflow path.wire { fill: none; stroke: rgba(255,255,255,.22); stroke-width: 1.4; }
+.howflow path.wire.on { stroke: url(#wireg); stroke-width: 2; }
+.howflow circle.spark { fill: #fff; filter: drop-shadow(0 0 5px #9fc1ff); }
+/* the authors' check and the way in: words over the night, the scene dimmed under them */
+.live #cap-badge, .live #cap-go { top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.capbadge p, .capgo p { font-size: clamp(16px, min(1.35vw, 2.4vh), 21px) !important; max-width: 58ch !important; }
+.capbadge h2, .capgo h2 { font-size: clamp(34px, min(4.4vw, 7vh), 68px) !important; }
+.capbadge .medal { width: clamp(88px, 11vh, 132px); margin: 0 auto 14px; filter: drop-shadow(0 0 22px rgba(107,152,255,.45)); }
+.capbadge .medal .ms { stroke-dasharray: 220; animation: msdraw 3.2s ease-in-out infinite alternate; } @keyframes msdraw { from { stroke-dashoffset: 220; } to { stroke-dashoffset: 0; } }
+.capbadge .badgeeye { margin: 0 0 8px !important; font: 600 clamp(13px, 1vw, 16px)/1 var(--mono) !important; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3) !important; }
+.capbadge .scores { display: flex; justify-content: center; gap: clamp(18px, 4vw, 64px); margin: 22px auto 6px; }
+.capbadge .scores > div { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 2px 8px; min-width: 180px; text-align: left; }
+.capbadge .scores span { grid-column: 1 / -1; font: 600 14px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.capbadge .scores b { font-size: clamp(44px, 5vw, 72px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; } .capbadge .scores small { color: var(--ink-3); font-size: 18px; }
+.capbadge .scores i { grid-column: 1 / -1; display: block; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); position: relative; overflow: hidden; margin-top: 8px; }
+.capbadge .scores i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--c); border-radius: 3px; }
+.capbadge .mocknote { font-size: 14px !important; color: #ff8a5b !important; }
+.capgo .gobtn { display: inline-flex; align-items: center; gap: 10px; margin-top: 26px; padding: 16px 30px; border-radius: 999px; font-size: clamp(18px, 1.5vw, 24px); font-weight: 600; color: #000;
+  background: linear-gradient(90deg, var(--acoustic), #9fc1ff); box-shadow: 0 0 40px rgba(159,193,255,.35); pointer-events: auto; }
+.capgo .gobtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+.live .capgo { pointer-events: none; } .live .capgo .gobtn { pointer-events: auto; }
+@media (max-width: 900px) { .howgrid { grid-template-columns: 1fr 1fr; grid-template-areas: "paper uni" "assets world" "sim sim"; } .howflow { display: none; } }
+
+@media (max-width: 700px) {
+  .gate-row { flex-direction: column; gap: 18px; }
+  .gate { gap: 10px; }
+  .gate-media { aspect-ratio: 16 / 9; max-height: 22vh; border-radius: 20px; }
+  .gate-text { gap: 2px; }
+  .nav .brand { font-size: 17.5px; }
+  .nav nav { font-size: 13.5px; gap: 12px; }
+  .glabel { font-size: 13px; letter-spacing: 0.1em; }
+  .slabel { font-size: 13.5px; }
+}
+@media (prefers-reduced-motion: reduce) { .live .cap .cue svg { animation: none; } }
+</style>
+
+<header class="nav">
+  <a class="brand" href="#top" id="brand">Sense2Sim</a>
+  <!-- (the entrances open a tab of their own: this page stays where the reader left it; AmI, 2026-11-18) -->
+  <nav aria-label="Entrances">
+    <a href="https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim_Universe/" target="_blank" rel="noopener">Sensing Universe</a>
+    <a href="https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim_Universe/" target="_blank" rel="noopener">Sensing World</a>
+    <a href="#go" class="navgo">Start LLAP ›</a>
+  </nav>
+</header>
+
+<main class="track" id="track">
+  <div class="stage" id="stage">
+    <canvas id="gl" aria-hidden="true"></canvas>
+
+    <section class="cap" id="cap-hero">
+      <p class="eyebrow">Sense2Sim</p>
+      <h1>Turning Ubiquitous Sensing Research Into Interactive Physical Models</h1>
+      <p class="thispaper">This one: <b>Device-Free Gesture Tracking Using Acoustic Signals</b> · LLAP, MobiCom 2016</p>
+      <span class="cue">Scroll <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span>
+    </section>
+
+    <section class="cap" id="cap-uni">
+      <h2>Sensing Universe</h2>
+      <p>Every paper is a star, gathered by how it senses. LLAP is one of them, among the acoustic ones.</p>
+    </section>
+
+    <section class="cap" id="cap-world">
+      <h2>Sensing World</h2>
+      <p>Papers placed in everyday spaces, running on the devices already there.</p>
+    </section>
+
+    <div id="labels" aria-hidden="true"></div>
+
+    <section class="gates how" id="gates" aria-label="How Sense2Sim works">
+      <div class="howhead"><p class="howeye">How Sense2Sim works</p><h2>From the whole field, to one paper you can run</h2></div>
+      <div class="howgrid">
+        <svg class="howflow" id="howflow" aria-hidden="true"></svg>
+        <div class="hnode hpaper" data-n="0"><span class="hmedia hpaperpic"><span class="hsheet"><b>Device-Free Gesture Tracking Using Acoustic Signals</b><i></i><i></i><i></i><i></i><i></i></span></span>
+          <span class="htext"><em>The paper goes in</em><strong>LLAP</strong><span>its text, its figures and its talk</span></span></div>
+        <a class="gate hnode" id="gate-uni" data-n="1" href="https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim_Universe/" target="_blank" rel="noopener">
+          <span class="gate-media"></span>
+          <span class="gate-text htext"><em>1</em><strong>Sensing Universe</strong><span>The paper placed among its related research.</span></span>
+        </a>
+        <div class="hnode" id="node-assets" data-n="2"><span class="hmedia hassets"><svg viewBox="0 0 200 120" aria-hidden="true">
+            <g class="dev"><rect x="34" y="18" width="40" height="80" rx="8"/><rect x="40" y="26" width="28" height="60" rx="3" class="scr"/><circle cx="54" cy="92" r="2.4"/></g>
+            <g class="dev"><path d="M112 98 C 112 70, 118 52, 136 46 C 150 42, 160 50, 160 64 L 160 98 Z"/><circle cx="141" cy="68" r="9"/><circle cx="141" cy="68" r="3.5"/></g>
+            <g class="dev hand"><path d="M86 104 C 84 88, 88 74, 96 66 L 100 44 C 101 39, 107 39, 107 44 L 106 62 L 110 40 C 111 35, 117 35, 117 40 L 115 62 L 119 46 C 120 41, 126 42, 125 47 L 121 70 C 124 80, 120 96, 112 104 Z"/></g>
+          </svg></span>
+          <span class="htext"><em>2</em><strong>Sensing 3D Assets</strong><span>The phone, the speaker and the hand LLAP uses, as 3D models.</span></span></div>
+        <a class="gate hnode" id="gate-world" data-n="3" href="https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim_Universe/" target="_blank" rel="noopener">
+          <span class="gate-media"></span>
+          <span class="gate-text htext"><em>3</em><strong>Sensing World</strong><span>The places such papers work in, built with those models.</span></span>
+        </a>
+        <div class="hnode hsim" id="node-sim" data-n="4"><span class="hmedia hsimpic"><img src="img/sim.jpg" alt=""></span>
+          <span class="htext"><em>4</em><strong>The LLAP Simulator</strong><span>LLAP's method, run in its place with its devices.</span></span></div>
+      </div>
+      <p class="madeby">The Sensing Universe, the Sensing World and this simulator are generated by the Sense2Sim skill and AI agent models. AI agent models may make mistakes.</p>
+    </section>
+
+    <!-- the authors' check: what to expect of this simulation (not in the user study) -->
+    <section class="cap capbadge" id="cap-badge" aria-label="Checked by its authors">
+      <div class="medal" aria-hidden="true"><svg viewBox="0 0 120 120"><defs><linearGradient id="mg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9f272"/><stop offset=".35" stop-color="#6b98ff"/><stop offset=".7" stop-color="#c7a2ff"/><stop offset="1" stop-color="#ff8a5b"/></linearGradient></defs>
+        <circle cx="60" cy="60" r="54" fill="#0b0d12" stroke="url(#mg)" stroke-width="3"/><path class="ms" d="M80 36 C 72 26, 44 26, 42 42 C 40 58, 80 56, 79 75 C 78 94, 46 94, 38 82" fill="none" stroke="url(#mg)" stroke-width="10" stroke-linecap="round"/></svg></div>
+      <p class="badgeeye">Checked by the paper's authors</p>
+      <h2>Its authors went through it, page by page</h2>
+      <div class="scores"><div><span>Accurate</span><b>4.6</b><small>/ 5</small><i style="--w:92%;--c:#4ecb85"></i></div><div><span>Quality</span><b>4.4</b><small>/ 5</small><i style="--w:88%;--c:#7fa6ff"></i></div></div>
+      <p>Accurate: does each page say what the paper says. Quality: is it clear and well made. On every page, the mark at the bottom left shows that page's own scores.</p>
+      <p class="mocknote">Mock: these two numbers are placeholders; LLAP's authors have not scored it yet.</p>
+    </section>
+
+    <!-- the way in -->
+    <section class="cap capgo" id="cap-go">
+      <h2>Now try LLAP yourself</h2>
+      <p>Move the hand, switch LLAP's parts off, change the room: every control runs the paper's own method.</p>
+      <a class="gobtn" id="go" href="#">Start the simulator <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2l5 4-5 4"/></svg></a>
+    </section>
+  </div>
+</main>
+
+<script>window.S2S_PAPER = { title: "Device-Free Gesture Tracking Using Acoustic Signals", short: "LLAP", g: 1, i: 53 };
+document.addEventListener("DOMContentLoaded", function () { var g = document.getElementById("go"); if (g) g.href = "https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim-LLAP/#who"; });</script>
+<script src="intro-data.js"></script>
+<script src="intro.js"></script>
+<!-- page:end -->
+</body>
+</html>
