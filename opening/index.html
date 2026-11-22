@@ -8,7 +8,13 @@
 <!-- page:begin -->
 <title>Sense2Sim · LLAP</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<script>
+// no flash of the page's plain layout before the scene (the owner, 2026-11-22: “第一页…会快速闪一下这一页”): hidden until
+// intro.js has the scene (or knows it has none); at most 2.5 s
+document.documentElement.classList.add("boot"); setTimeout(function () { document.documentElement.classList.remove("boot"); }, 2500);
+</script>
 <style>
+html.boot main, html.boot .madeby { visibility: hidden; }
 /* Layout: one pinned stage under a slim bar; the page's scroll drives one scene: three first pages,
    the wall of papers, the Sensing Universe, the Sensing World as a point cloud, then two entrances side by side.
    Words keep to a band of their own; the scene is framed clear of it. One look: the night sky. */
@@ -275,8 +281,14 @@ window.S2S_PAPER = {"title":"Device-Free Gesture Tracking Using Acoustic Signals
   // the way in: the simulator, with the same address's settings (?study=1)
   document.addEventListener("DOMContentLoaded", function () { [].forEach.call(document.querySelectorAll("[data-in]"), function (a) { a.href = "../" + q + "#who"; }); });
   // the authors' check: only where they gave scores, and never in the user study (no scores for its readers)
-  var P = window.S2S_PAPER; if (P && (study || !P.scores)) P.scored = false;
-  if (P && P.scores && !study) P.scored = true;
+  // (out of the study it is always shown, N/A where they gave none yet: the owner, 2026-11-22: “非study模式把打分所有相关的都放上去，没分就先写NA”)
+  var P = window.S2S_PAPER; if (P) P.scored = !study;
+  if (P && !study && !P.scores) document.addEventListener("DOMContentLoaded", function () {
+    var h = document.querySelector("#cap-badge h2"), e = document.querySelector("#cap-badge .badgeeye"), t = document.querySelector("#cap-badge > p:last-of-type");
+    if (e) e.textContent = "To be checked by the paper's authors"; if (h) h.textContent = "Its authors will go through it, page by page";
+    if (t) t.textContent = "They have not scored it yet, so the scores show N/A for now. Accurate: does each page say what the paper says. Quality: is it clear and well made. On every page, the mark at the bottom left will show that page's own scores.";
+    [].forEach.call(document.querySelectorAll("#cap-badge .scores i"), function (i) { i.style.setProperty("--w", "0%"); });
+    [].forEach.call(document.querySelectorAll("#cap-badge .scores small"), function (x) { x.hidden = true; }); });
 })();
 </script>
 <script src="medal.js"></script>

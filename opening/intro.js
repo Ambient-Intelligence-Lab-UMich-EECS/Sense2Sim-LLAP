@@ -37,7 +37,7 @@
   if (DATA && DATA.counts && !reduce) {
     try { gl = canvas.getContext("webgl2", { antialias: true, alpha: false, depth: true, powerPreference: "high-performance" }); } catch (e) { gl = null; }
   }
-  if (!gl) { API.ready = true; return; } // the words and the two entrances stay, in the page's flow
+  if (!gl) { API.ready = true; root.classList.remove("boot"); return; } // the words and the two entrances stay, in the page's flow
 
   // ---------------------------------------------------------------- small maths
   var TAU = Math.PI * 2;
@@ -945,7 +945,7 @@
     if (ba > 0.3 && !medalOn) { medalOn = true;
       if (medal3) { medal3.stop(); medal3 = null; }
       if (window.S2S_MEDAL3D && $("medal")) medal3 = window.S2S_MEDAL3D($("medal"), MEDAL[0], MEDAL[1], SC.who || "The paper's authors", SC.date || "");
-      var t0 = performance.now(); (function count(now) { var e = Math.min(1, (now - t0) / 1800), k = 1 - Math.pow(1 - e, 3); $("sa").textContent = (MEDAL[0] * k).toFixed(1); $("sq").textContent = (MEDAL[1] * k).toFixed(1); if (e < 1 && medalOn) requestAnimationFrame(count); })(t0); }
+      var t0 = performance.now(); (function count(now) { var e = Math.min(1, (now - t0) / 1800), k = 1 - Math.pow(1 - e, 3); $("sa").textContent = MEDAL[0] ? (MEDAL[0] * k).toFixed(1) : "N/A"; $("sq").textContent = MEDAL[1] ? (MEDAL[1] * k).toFixed(1) : "N/A"; if (e < 1 && medalOn) requestAnimationFrame(count); })(t0); }
     else if (ba < 0.05 && medalOn) { medalOn = false; }
     var dimA = Math.max(0.06, 1 - 1.25 * Math.max(ba, ga));
     canvas.style.opacity = dimA.toFixed(3); labels.style.opacity = dimA.toFixed(3); gates.style.filter = dimA < 0.999 ? "opacity(" + dimA.toFixed(3) + ")" : "";
@@ -956,6 +956,9 @@
   // (the story's stops, of the whole scroll: the title, the wall, all the papers, the Universe, the 3D assets, the World; then how it works)
   var STOPS = [0, 0.115, 0.237, 0.349, 0.458, 0.573, 0.655].concat([0, 1, 2, 3, 4].map(function (n) { return HOW[0] + (HOW[1] - HOW[0]) * (0.2 * n + 0.17); }), PAPER && PAPER.scored === false ? [] : [0.895], [0.98]);
   // back from the simulator (its first page, its end's “Start from the beginning”: js/feedback.js, opening): #how, how it works whole
+  // a new entry starts at the top: the browser does not put back where the last visit stood (#how aside)
+  try { if ("scrollRestoration" in history) history.scrollRestoration = "manual"; } catch (e) {}
+  if (location.hash !== "#how") window.scrollTo(0, 0);
   window.addEventListener("load", function () { if (location.hash === "#how") setTimeout(function () { stopAt = 6; window.scrollTo(0, Math.round(STOPS[6] * lenNow())); }, 60); });
   var stopAt = 0, lockUntil = 0, snapT = 0;
   function lenNow() { var r = track.getBoundingClientRect(); return r.height - H - (parseFloat(getComputedStyle(track).paddingTop) || 0); }
@@ -978,6 +981,7 @@
   try {
     setup();
     root.classList.add("live");
+    requestAnimationFrame(function () { requestAnimationFrame(function () { root.classList.remove("boot"); }); }); // (shown once the scene has drawn)
     measure();
     window.addEventListener("resize", measure);
     if (window.ResizeObserver) new ResizeObserver(measure).observe(stage);
@@ -989,7 +993,7 @@
     requestAnimationFrame(function (now) { last = now; frame(now); API.ready = true; });
   } catch (err) {
     // the scene could not be made: the words and the entrances stay
-    root.classList.remove("live");
+    root.classList.remove("live"); root.classList.remove("boot");
     API.error = String((err && err.message) || err); API.ready = true;
     if (window.console) console.error("Sense2Sim landing:", err);
   }
