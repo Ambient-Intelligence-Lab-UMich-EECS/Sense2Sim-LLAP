@@ -12552,9 +12552,20 @@ const FB_H2C = "https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2can
 const PAGE_THUMBS = {"about":"thumbs/about.jpg","all":"thumbs/all.jpg","c1":"thumbs/c1.jpg","c2":"thumbs/c2.jpg","c3":"thumbs/c3.jpg","demo":"thumbs/demo.jpg","exp-ablation":"thumbs/exp-ablation.jpg","exp-array":"thumbs/exp-array.jpg","exp-general":"thumbs/exp-general.jpg","exp-kg":"thumbs/exp-kg.jpg","exp-kg2":"thumbs/exp-kg2.jpg","exp-physics":"thumbs/exp-physics.jpg","exp-related":"thumbs/exp-related.jpg","exp-world":"thumbs/exp-world.jpg","explore":"thumbs/explore.jpg","gap":"thumbs/gap.jpg","how":"thumbs/how.jpg","idea":"thumbs/idea.jpg","inuse":"thumbs/inuse.jpg","level-1":"thumbs/level-1.jpg","motivation":"thumbs/motivation.jpg","open":"thumbs/open.jpg","s1":"thumbs/s1.jpg","s2":"thumbs/s2.jpg","s3":"thumbs/s3.jpg","see-2":"thumbs/see-2.jpg","see":"thumbs/see.jpg","sense2sim":"thumbs/sense2sim.jpg","sim-real":"thumbs/sim-real.jpg","start-2":"thumbs/start-2.jpg","start":"thumbs/start.jpg","terms":"thumbs/terms.jpg","title":"thumbs/title.jpg","use":"thumbs/use.jpg","who":"thumbs/who.jpg"};
 // what each answer says it came from: the simulation (its repository's name, Sense2Sim-<paper>), the kit's version and
 // the kind of reader (as picked on the first page, or the default kind marked "not picked"); tools/site.mjs fills S2S_SITE
-const S2S_SITE = {"name":"Sense2Sim-LLAP","kit":"6.0.0-alpha.83","title":"Device-Free Gesture Tracking Using Acoustic Signals","url":"https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim-LLAP/"};
+const S2S_SITE = {"name":"Sense2Sim-LLAP","kit":"6.0.0-alpha.84","title":"Device-Free Gesture Tracking Using Acoustic Signals","url":"https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim-LLAP/","build":"20261122T035511"};
 const s2sSite = () => S2S_SITE.name || (location.pathname.match(/\/(Sense2Sim-[^/]+)\//) || [])[1] || document.title;
 const s2sKit = () => S2S_SITE.kit || "";
+// A reader never works on an older page than the site's (the owner, 2026-11-22: “每次进入强制刷新浏览器缓存”): as the page
+// opens it asks the site's version.json, never from a cache; where that names a newer build than this page's, the page
+// is loaded again once, at an address the caches have not seen (?v=<build>).
+(function freshPage() {
+  if (typeof document === "undefined" || navigator.webdriver || !S2S_SITE.build || !/^https?:/.test(location.protocol)) return;
+  fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((v) => {
+    if (!v || !v.build || v.build <= S2S_SITE.build) return;
+    const u = new URL(location.href); if (u.searchParams.get("v") === v.build) return; // loaded again already: no loop
+    u.searchParams.set("v", v.build); location.replace(u.toString());
+  }).catch(() => {});
+})();
 // the paper's title and the simulation's address: the sheet's "site" cell is the title, linked to the address
 const s2sWhere = () => ({ siteTitle: S2S_SITE.title || (document.querySelector("title") || {}).textContent || "", siteUrl: S2S_SITE.url || (/^https?:/.test(location.protocol) ? location.origin + location.pathname : "") });
 const s2sReader = () => (typeof rdPick !== "undefined" && rdPick) ? rdPick : (typeof rdKind !== "undefined" && rdKind) ? `${rdKind} (not picked)` : "not picked";
@@ -12567,13 +12578,28 @@ const s2sReader = () => (typeof rdPick !== "undefined" && rdPick) ? rdPick : (ty
 // comes back goes on. "s2s-user" is the event that says the name is given.
 let s2sUserName = "";
 const s2sUser = () => s2sUserName;
+// A visit (the owner, 2026-11-22: “记忆模式能不能做成，每次进入强制刷新…有时候会抽，不出问卷啥的”): what is kept of a
+// reader (the notes not sent, the scores, the answers, the kind picked, the guides seen) is kept for one visit, the
+// tab's (sessionStorage "s2s-visit"), so each time the page is opened it starts afresh and a reload goes on. The last
+// visit of a name is remembered ("s2s-last:<name>"), and the name card offers to go on with it while something of it
+// is not sent yet. s2sWho(): the name and the visit, the key of what is kept.
+let s2sVisitId = "", s2sVisitNew = false;
+try { s2sVisitId = sessionStorage.getItem("s2s-visit") || ""; if (!s2sVisitId) { s2sVisitId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); s2sVisitNew = true; sessionStorage.setItem("s2s-visit", s2sVisitId); } } catch (e) { s2sVisitId = "v" + Date.now().toString(36); s2sVisitNew = true; }
+const s2sWho = () => s2sUserName + "#" + s2sVisitId;
+const s2sLastKey = () => "s2s-last:" + s2sUserName;
+const s2sVisitKeep = () => { try { if (s2sUserName) localStorage.setItem(s2sLastKey(), s2sVisitId); } catch (e) {} }; // called when something is kept
+// the last visit of this name with something not sent yet, or ""
+const s2sVisitOpen = (name) => { try { const v = localStorage.getItem("s2s-last:" + name) || ""; if (!v || v === s2sVisitId) return ""; const tail = ":" + name + "#" + v; return Object.keys(localStorage).some((k) => /^s2s-(notes|author|survey):/.test(k) && k.endsWith(tail) && (localStorage.getItem(k) || "").length > 4) ? v : ""; } catch (e) { return ""; } };
+const s2sVisitTake = (v) => { s2sVisitId = v; s2sVisitNew = false; try { sessionStorage.setItem("s2s-visit", v); } catch (e) {} };
 (function whoAnswers() {
   if (typeof document === "undefined") return;
   const q = new URLSearchParams(location.search), given = (q.get("user") || "").trim();
   // another reader than the last: no kind of reader picked yet, every guide to see again
   // (a kind given in the address, ?reader=<kind>, is the new reader's: kept)
   const newReader = () => { try { if (typeof rdSet === "function" && !q.get("reader")) rdSet(""); } catch (e) {} try { if (typeof tourSeen !== "undefined") { tourSeen = {}; localStorage.removeItem(TOUR_KEY); } } catch (e) {} };
-  try { const before = localStorage.getItem("s2s-user") || ""; s2sUserName = given || before; if (given) { localStorage.setItem("s2s-user", given); if (before && before !== given) newReader(); } } catch (e) { s2sUserName = given; }
+  let other = false; // another name than the last one, given in the address: another reader
+  try { const before = localStorage.getItem("s2s-user") || ""; s2sUserName = given || before; if (given) { localStorage.setItem("s2s-user", given); other = !!before && before !== given; } } catch (e) { s2sUserName = given; }
+  if (other) newReader(); else if (s2sVisitNew && (!navigator.webdriver || ["feedback", "survey", "author"].some((k) => q.get(k) === "1"))) newReader(); // a new visit: no kind picked yet, every guide to see again
   const asked = (() => { try { return !!sessionStorage.getItem("s2s-user-asked"); } catch (e) { return false; } })();
   if (given || asked || q.get("feedback") === "0" || (navigator.webdriver && !["feedback", "survey", "author"].some((k) => q.get(k) === "1"))) return;
   const sh = document.createElement("div"), c = document.createElement("div");
@@ -12583,18 +12609,21 @@ const s2sUser = () => s2sUserName;
   c.innerHTML = `<div style="font:600 17px system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--accent,#7a5a12)">Sense2Sim</div><h2 id="s2suh" style="margin:0;font-size:27px;line-height:1.2">Welcome</h2>
     <label for="s2suser" style="font-size:17px">Your name or study ID, so we can tell your answers apart</label>
     <input id="s2suser" autocomplete="nickname" style="font:19px system-ui,sans-serif;color:inherit;background:rgba(128,128,128,.08);border:1px solid rgba(128,128,128,.4);border-radius:8px;padding:10px 12px">
-    <div style="display:flex;justify-content:flex-end"><button type="button" disabled style="font:500 17px system-ui,sans-serif;border:1px solid var(--accent,#7a5a12);background:var(--accent,#7a5a12);color:var(--bg,#fffdf8);border-radius:8px;padding:7px 16px;cursor:pointer">Start</button></div>`;
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:14px"><a href="#" data-k="goon" hidden style="font:15px system-ui,sans-serif;color:inherit;opacity:.75;margin-right:auto">Continue my last visit (not submitted yet)</a><button type="button" disabled style="font:500 17px system-ui,sans-serif;border:1px solid var(--accent,#7a5a12);background:var(--accent,#7a5a12);color:var(--bg,#fffdf8);border-radius:8px;padding:7px 16px;cursor:pointer">Start</button></div>`;
   const inp = c.querySelector("input"), btn = c.querySelector("button"); inp.value = s2sUserName;
-  const sync = () => { btn.disabled = !inp.value.trim(); btn.style.opacity = btn.disabled ? ".5" : "1"; }; sync();
-  const done = () => {
+  const goon = c.querySelector('[data-k="goon"]');
+  const sync = () => { btn.disabled = !inp.value.trim(); btn.style.opacity = btn.disabled ? ".5" : "1"; goon.hidden = !s2sVisitOpen(inp.value.trim()); }; sync();
+  const done = (last) => {
     const v = inp.value.trim(); if (!v) return inp.focus();
     let before = ""; try { before = localStorage.getItem("s2s-user") || ""; } catch (e) {}
     s2sUserName = v; try { localStorage.setItem("s2s-user", v); sessionStorage.setItem("s2s-user-asked", "1"); } catch (e) {}
-    if (before && before !== v) newReader();
+    if (before && before !== v) newReader(); // another name than the last one: another reader
+    if (last) s2sVisitTake(last); // the last visit's notes, scores and answers, to go on with
     sh.remove(); c.remove(); dispatchEvent(new Event("s2s-user"));
   };
-  inp.addEventListener("input", sync); btn.onclick = (e) => { e.stopPropagation(); done(); };
-  c.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); done(); } });
+  goon.onclick = (e) => { e.preventDefault(); e.stopPropagation(); done(s2sVisitOpen(inp.value.trim())); };
+  inp.addEventListener("input", sync); btn.onclick = (e) => { e.stopPropagation(); done(""); };
+  c.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); done(""); } });
   for (const el of [c, sh]) { el.addEventListener("click", (e) => e.stopPropagation()); el.addEventListener("pointerdown", (e) => e.stopPropagation()); }
   // the deck's keys wait while the card is open
   document.addEventListener("keydown", (e) => { if (document.body.contains(c) && !c.contains(e.target)) { e.stopPropagation(); e.preventDefault(); } }, true);
@@ -12626,31 +12655,32 @@ async function s2sSend(payload) {
   return j;
 }
 if (typeof document !== "undefined") { try { if (JSON.parse(localStorage.getItem(s2sUnsent()) || "[]").length) s2sFlush(); } catch (e) {} }
+// The board of all the pages, for a review before something is sent (the owner, 2026-11-22: “直接用think aloud的选页那个
+// 功能，鼠标分级hover可以看页面的打分…并且允许用户在这个界面修改”): S2S_BOARD({ label, top, badge(p), side(el, i, api),
+// miss(p), foot(el, api) }) opens it; badge: what a page's tile says (HTML); miss: the pages that still want something
+// (framed, pulsing); side: a panel beside the board, filled for the page looked at (i, −1 for none); foot: buttons at
+// the top right. api: { close(), refresh(), show(i), pages }. A click on a tile looks at it (it opens no page).
+let S2S_BOARD = null;
 let S2S_REMIND = () => {}; // says the notes not sent yet (set below; js/survey.js calls it after the last questions)
 let S2S_SURVEY = false;     // the user study's questions are on (js/survey.js): the last page's reminder waits for them
-// User study mode (the owner, 2026-11-21: “user study mode，在这里加一个这个勾选框，小一点，隐藏一点。disable的时候只开think aloud
-// 功能，打分和问卷就不要了”): a small box on the page that asks who the reader is; on, the authors' scores
-// (js/author.js) and the study's questions (js/survey.js) run; off, the think-aloud notes alone. Off unless turned on
-// in this browser ("s2s-study"; the owner: “默认不开”); ?study=1 or ?study=0 in the address sets it.
-const S2S_STUDY_KEY = "s2s-study";
+// User study mode, set by the address alone (the owner, 2026-11-22: “user study不做成外面的开关了，做一个全局的，类似在地址栏
+// 后面写user study =1 比如就打开，默认没有就关”): ?study=1 (or ?userstudy=1) turns on the authors' scores
+// (js/author.js) and the study's questions (js/survey.js); without it, the think-aloud notes alone, for every reader.
+// Nothing is kept of it in the browser.
 function s2sStudy() {
-  const q = typeof location !== "undefined" ? new URLSearchParams(location.search).get("study") : null;
-  if (q === "0" || q === "1") return q === "1";
-  try { const v = localStorage.getItem(S2S_STUDY_KEY); if (v === "0" || v === "1") return v === "1"; } catch (e) {}
-  return false;
+  if (typeof location === "undefined") return false;
+  const q = new URLSearchParams(location.search);
+  return ["study", "userstudy", "user_study"].some((k) => q.get(k) === "1");
 }
 // The page that asks who the reader is, in a reader's browser (not the kit's own, navigator.webdriver, unless the address
-// asks, ?feedback=1, ?survey=1 or ?author=1), with or without the notes: the pages after it wait for a kind picked, and
-// it holds the box of User study mode.
+// asks, ?feedback=1, ?survey=1 or ?author=1), with or without the notes: the pages after it wait for a kind picked.
 (function pickFirst() {
   if (typeof document === "undefined") return;
   const q = new URLSearchParams(location.search);
   if (navigator.webdriver && !["feedback", "survey", "author"].some((k) => q.get(k) === "1")) return;
   { const st = document.createElement("style"); st.textContent = `.goal .gask.fbnudge { animation: fbnudge .6s cubic-bezier(.36,.07,.19,.97) 2; box-shadow: 0 0 0 3px #ff8a5b, 0 0 24px rgba(255,138,91,.6) !important; }
 @keyframes fbnudge { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-8px); } 40%, 60% { transform: translateX(8px); } }
-@media (prefers-reduced-motion: reduce) { .goal .gask.fbnudge { animation: none; } }
-.fbstudy { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font: 13px/1.2 system-ui, sans-serif; color: var(--ink-3, #888); opacity: .55; cursor: pointer; user-select: none; }
-.fbstudy:hover, .fbstudy:focus-within { opacity: 1; } .fbstudy input { width: 13px; height: 13px; margin: 0; accent-color: var(--accent, #7a5a12); }`; document.head.append(st); }
+@media (prefers-reduced-motion: reduce) { .goal .gask.fbnudge { animation: none; } }`; document.head.append(st); }
   // the page that asks who the reader is: the pages after it wait for a kind picked, none picked for the reader
   // (the owner, 2026-11-21: “五个身份不要默认给我选paper author，默认是啥都不选，要让用户选，选了才能往下”): its question
   // is shown again, with a shake
@@ -12659,12 +12689,6 @@ function s2sStudy() {
   const nudgePick = () => { const q = slides[askAt].querySelector(".goal.pick .gask"); if (!q) return; q.classList.remove("fbnudge"); void q.offsetWidth; q.classList.add("fbnudge"); };
   const fwdP = forward; forward = function () { if (unpicked()) return nudgePick(); fwdP(); };
   const goP = go; go = function (i, s) { if (unpicked() && i > cur) return nudgePick(); goP(i, s); };
-  // the box of User study mode, small, under the kinds of reader; a change starts the page again
-  { const at = askAt >= 0 && slides[askAt].querySelector(".goal.pick");
-    if (at) { const l = document.createElement("label"); l.className = "fbstudy"; l.title = "On: the authors' scores and the study's questions. Off: think-aloud notes only.";
-      l.innerHTML = `<input type="checkbox"${s2sStudy() ? " checked" : ""}> User study mode`; at.append(l);
-      const box = l.querySelector("input"); box.addEventListener("click", (e) => e.stopPropagation());
-      box.addEventListener("change", () => { try { localStorage.setItem(S2S_STUDY_KEY, box.checked ? "1" : "0"); } catch (e) {} const u = new URL(location.href); u.searchParams.delete("study"); location.replace(u.toString()); }); } }
 })();
 (function feedback() {
   // not in the kit's own browsers (shots, look, the checks: navigator.webdriver) unless asked for, ?feedback=1; ?feedback=0 turns it off
@@ -12730,6 +12754,18 @@ function s2sStudy() {
 .fbdlg { position: fixed; inset: 0; z-index: 80; background: rgba(10,12,16,.45); display: grid; place-items: center; padding: 16px; }
 .fbdlg > div { background: var(--panel, #fffdf8); color: var(--ink, #1d2129); border-radius: 12px; padding: 18px; width: min(560px, 100%); display: grid; gap: 12px; font: 17px/1.5 system-ui, sans-serif; }
 .fbov { position: fixed; inset: 0; z-index: 75; background: var(--bg, #efe9dd); }
+.fbov.fbwith .fbboard { right: min(460px, 42vw); }
+.fbside { position: absolute; right: 0; top: 0; bottom: 52px; width: min(460px, 42vw); box-sizing: border-box; overflow-y: auto; padding: 64px 18px 18px; background: var(--panel, #fffdf8); border-left: 1px solid rgba(128,128,128,.3); color: var(--ink, #1d2129); font: 16px/1.45 system-ui, sans-serif; display: grid; gap: 12px; align-content: start; }
+.fbside h3 { margin: 0; font: 600 20px/1.25 system-ui, sans-serif; } .fbside p { margin: 0; } .fbside .fbdim { opacity: .7; font-size: 14px; }
+.fbfoot { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: max(12px, env(safe-area-inset-top, 0px)); display: flex; gap: 10px; align-items: center; z-index: 2; font: 15px system-ui, sans-serif; color: var(--ink, #1d2129); }
+.fbfoot .fbbtn[disabled] { opacity: .45; cursor: not-allowed; } .fbfoot .fbgo { background: var(--accent, #7a5a12); border-color: var(--accent, #7a5a12); color: var(--bg, #fffdf8); font-weight: 600; }
+.fbtile .fbbadge { position: absolute; right: 8px; top: 8px; display: flex; gap: 6px; font: 600 22px system-ui, sans-serif; }
+.fbtile .fbbadge:empty { display: none; } .fbtile .fbbadge > span { color: #fff; background: rgba(20,24,30,.78); padding: 2px 9px; border-radius: 6px; }
+.fbtile .fbbadge > span.fbwant { background: #ff8a5b; color: #1a1a1a; }
+.fbtile.fbmiss .fbpic { border-color: #ff8a5b; box-shadow: 0 0 0 5px #ff8a5b, 0 0 30px rgba(255,138,91,.7); animation: fbmiss 1.2s ease-in-out infinite alternate; }
+.fbd.fbmiss i { background: #ff8a5b; height: 12px; }
+@keyframes fbmiss { from { box-shadow: 0 0 0 3px #ff8a5b, 0 0 8px rgba(255,138,91,.4); } to { box-shadow: 0 0 0 7px #ff8a5b, 0 0 34px rgba(255,138,91,.8); } }
+@media (prefers-reduced-motion: reduce) { .fbtile.fbmiss .fbpic { animation: none; } }
 .fbboard { position: absolute; inset: 0 0 52px 0; overflow: hidden; cursor: zoom-in; }
 .fbsheet { position: absolute; left: 0; top: 0; display: grid; grid-template-columns: repeat(8, 1fr); transform-origin: 0 0; }
 .fbtile { all: unset; cursor: pointer; position: relative; display: block; }
@@ -12766,11 +12802,12 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
   }, true);
   // the notes are kept in the browser, by reader, until they are sent: a reload or a closed window loses none (their
   // pictures are left out when the browser has no room for them; the boxes' places are kept all the same)
-  const NKEY = () => "s2s-notes:" + site + ":" + s2sUser();
+  const NKEY = () => "s2s-notes:" + site + ":" + s2sWho();
   const store = () => {
     try {
       if (!notes.length) return localStorage.removeItem(NKEY());
       const P = pages(), rows = notes.map((n) => ({ ...n, id: n.page != null ? P[n.page].id : null }));
+      s2sVisitKeep();
       try { localStorage.setItem(NKEY(), JSON.stringify(rows)); } catch (e) { localStorage.setItem(NKEY(), JSON.stringify(rows.map((n) => ({ ...n, shot: null })))); }
     } catch (e) {}
   };
@@ -12808,9 +12845,21 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
   const snap = async () => {
     try {
       const h = await loadH2C(), scale = Math.min(1, 1280 / innerWidth);
-      const c = await h(document.body, { x: scrollX, y: scrollY, width: innerWidth, height: innerHeight, scale, useCORS: true, logging: false, ignoreElements: (el) => el.id === "fbta" || el.id === "fbmine" || el.id === "fbsel" || el.id === "fbhint" || (el.classList && (el.classList.contains("fbnote") || el.classList.contains("fbbox") || el.classList.contains("fbtip") || el.classList.contains("fbcard"))) });
+      // the page as the reader sees it now (the owner, 2026-11-22: “最后的think aloud summary 用户碰到截图内容缺失情况”):
+      // html2canvas draws a copy of the page, where every CSS animation starts again, so what came in by an animation
+      // (the kinds of reader, a line come up) was drawn as before it came. Each animated thing's look now (opacity,
+      // transform, visibility) is written on its copy, and the copy's animations and transitions are off.
+      const anim = [...new Set(document.getAnimations().map((a) => a.effect && a.effect.target).filter((el) => el && el.nodeType === 1))];
+      anim.forEach((el, k) => { const cs = getComputedStyle(el); el.setAttribute("data-fbk", k); el.__fbk = { opacity: cs.opacity, transform: cs.transform, visibility: cs.visibility, translate: cs.translate, scale: cs.scale, clipPath: cs.clipPath }; });
+      const onclone = (doc) => {
+        const st = doc.createElement("style"); st.textContent = "*, *::before, *::after { animation: none !important; transition: none !important; }"; doc.head.appendChild(st);
+        anim.forEach((el, k) => { const c2 = doc.querySelector(`[data-fbk="${k}"]`), v = el.__fbk; if (!c2 || !v) return; for (const [p, x] of Object.entries(v)) if (x) c2.style.setProperty(p.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase()), x, "important"); });
+      };
+      const tidy = () => anim.forEach((el) => { el.removeAttribute("data-fbk"); delete el.__fbk; });
+      const c = await h(document.body, { onclone, x: scrollX, y: scrollY, width: innerWidth, height: innerHeight, scale, useCORS: true, logging: false, ignoreElements: (el) => el.id === "fbta" || el.id === "fbmine" || el.id === "fbsel" || el.id === "fbhint" || (el.classList && (el.classList.contains("fbnote") || el.classList.contains("fbbox") || el.classList.contains("fbtip") || el.classList.contains("fbcard"))) });
+      tidy();
       return c.toDataURL("image/jpeg", 0.82);
-    } catch (e) { return null; }
+    } catch (e) { try { document.querySelectorAll("[data-fbk]").forEach((el) => el.removeAttribute("data-fbk")); } catch (e2) {} return null; }
   };
   const pct = (e) => [Math.min(100, Math.max(0, e.clientX / innerWidth * 100)), Math.min(100, Math.max(0, e.clientY / innerHeight * 100))];
   const boxAt = (r, n) => { const b = document.createElement("div"); b.className = "fbbox"; Object.assign(b.style, { left: r[0] + "vw", top: r[1] + "vh", width: r[2] + "vw", height: r[3] + "vh" }); if (n) b.innerHTML = `<span>${n}</span>`; document.body.append(b); return b; };
@@ -12916,24 +12965,35 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
       d.querySelector('[data-k="later"]').onclick = close; d.querySelector('[data-k="open"]').onclick = () => { close(); openSummary(); }; d.querySelector('[data-k="open"]').focus(); });
   };
   S2S_REMIND = remind;
+  S2S_BOARD = (o) => openBoard(null, o);
   addEventListener("beforeunload", (e) => { if (!notes.length) return; e.preventDefault(); e.returnValue = ""; setTimeout(remind, 600); });
   let lastT = 0; const goF = go;
   go = function (i, s) { if (i !== cur && nudgeCard()) return; goF(i, s); clearTimeout(lastT); if (cur === slides.length - 1 && !S2S_SURVEY) lastT = setTimeout(() => { if (cur === slides.length - 1) remind(); }, 3000); };
   // the board of all the pages
   let closeBoard = () => {};
-  function openBoard(pick) {
+  function openBoard(pick, o = null) {
     const P = pages(), lv = [...new Set(P.map((p) => p.lvl))];
     const ov = document.createElement("div"); ov.className = "fbov"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", "Which page?");
-    ov.innerHTML = `<div class="fbboard"><div class="fbsheet">${P.map((p) => `<button type="button" class="fbtile" data-p="${p.i}" aria-label="Page ${p.i + 1}: ${fbEsc(p.name)}">${PAGE_THUMBS[p.id] ? `<img class="fbpic" alt="" src="${PAGE_THUMBS[p.id]}">` : `<span class="fbpic fbcardt">${fbEsc(p.name)}</span>`}<span class="fbpn">${p.i + 1}</span></button>`).join("")}</div></div>
+    ov.innerHTML = `<div class="fbboard"><div class="fbsheet">${P.map((p) => `<button type="button" class="fbtile" data-p="${p.i}" aria-label="Page ${p.i + 1}: ${fbEsc(p.name)}">${PAGE_THUMBS[p.id] ? `<img class="fbpic" alt="" src="${PAGE_THUMBS[p.id]}">` : `<span class="fbpic fbcardt">${fbEsc(p.name)}</span>`}<span class="fbpn">${p.i + 1}</span>${o ? `<span class="fbbadge"></span>` : ""}</button>`).join("")}</div></div>${o && o.side ? `<aside class="fbside"></aside>` : ""}
       <nav class="fbnav" aria-label="All pages, by level">${lv.map((l) => `<div class="fblvl"><span>${fbEsc(levelName(l))}</span><div class="fbdots">${P.filter((p) => p.lvl === l).map((p) => `<button type="button" class="fbd" data-i="${p.i}" aria-label="Page ${p.i + 1}: ${fbEsc(p.name)}"><i></i><b>${p.i + 1} · ${fbEsc(p.name)}</b></button>`).join("")}</div></div>`).join("")}</nav>
-      <div class="fbtop"><button class="fbbtn" type="button" data-k="close">✕ Close</button><span>Which page? Move fast to see more, slow down to look closer, rest on one to see it whole; click it to open it.</span></div>`;
+      <div class="fbtop"><button class="fbbtn" type="button" data-k="close">✕ Close</button><span>${o && o.top ? o.top : "Which page? Move fast to see more, slow down to look closer, rest on one to see it whole; click it to open it."}</span></div>${o ? `<div class="fbfoot"></div>` : ""}`;
+    if (o) { ov.classList.add("fbrev"); if (o.side) ov.classList.add("fbwith"); if (o.label) ov.setAttribute("aria-label", o.label); }
     document.body.append(ov);
-    closeBoard = () => { ov.remove(); closeBoard = () => {}; };
+    closeBoard = () => { ov.remove(); closeBoard = () => {}; if (o && o.onclose) o.onclose(); };
     ov.querySelector('[data-k="close"]').onclick = () => closeBoard();
-    ov.querySelectorAll(".fbtile").forEach((b) => b.onclick = () => { closeBoard(); pick(+b.dataset.p); });
     const B = board(ov.querySelector(".fbboard"), ov.querySelector(".fbsheet"));
-    ov.querySelectorAll(".fbd").forEach((d) => { d.addEventListener("pointerenter", () => B.show(+d.dataset.i)); d.addEventListener("focus", () => B.show(+d.dataset.i)); d.onclick = () => { closeBoard(); pick(+d.dataset.i); }; });
-    B.onfocus = (i) => ov.querySelectorAll(".fbd").forEach((d) => d.classList.toggle("fbon", +d.dataset.i === i));
+    // a review: a tile looked at stays (its panel beside the board is worked in); a pick: the tile's page opens
+    let at = -1, pinned = false; // pinned: a tile clicked stays in the panel while the pointer crosses others on its way there
+    const side = ov.querySelector(".fbside"), foot = ov.querySelector(".fbfoot");
+    const api = { pages: P, close: () => closeBoard(), show: (i) => { pinned = true; look(i); B.show(i); },
+      refresh() { if (!o) return; for (const t of ov.querySelectorAll(".fbtile")) { const p = P[+t.dataset.p]; t.querySelector(".fbbadge").innerHTML = o.badge ? o.badge(p) || "" : ""; t.classList.toggle("fbmiss", !!(o.miss && o.miss(p))); }
+        for (const d of ov.querySelectorAll(".fbd")) d.classList.toggle("fbmiss", !!(o.miss && o.miss(P[+d.dataset.i]))); if (foot && o.foot) o.foot(foot, api); } };
+    const look = (i) => { if (!o || i === at) return; at = i; if (side && o.side) o.side(side, i, api); };
+    ov.querySelectorAll(".fbtile").forEach((b) => b.onclick = () => { if (o) return api.show(+b.dataset.p); closeBoard(); pick(+b.dataset.p); });
+    ov.querySelectorAll(".fbd").forEach((d) => { d.addEventListener("pointerenter", () => { B.show(+d.dataset.i); if (o && !pinned) look(+d.dataset.i); }); d.addEventListener("focus", () => B.show(+d.dataset.i)); d.onclick = () => { if (o) return api.show(+d.dataset.i); closeBoard(); pick(+d.dataset.i); }; });
+    B.onfocus = (i) => { ov.querySelectorAll(".fbd").forEach((d) => d.classList.toggle("fbon", +d.dataset.i === i)); if (o && !pinned && i != null && i >= 0) look(i); };
+    if (o) { for (const el of [side, foot]) if (el) for (const ev of ["click", "pointerdown", "keydown"]) el.addEventListener(ev, (e) => e.stopPropagation()); if (side && o.side) o.side(side, -1, api); api.refresh(); }
+    return api;
   }
   function board(view, sheet) {
     const tiles = [...sheet.querySelectorAll(".fbtile")], reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -12992,6 +13052,7 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
 // tab “scores”). A site given the authors' scores (tools/site.mjs --scores) shows
 // the medal to every reader, small in the bar, the certificate on a click: AUTHOR_CERT.
 const AUTHOR_CERT = null;
+let AU_REVIEW = null; // (then) → the author's scores looked over at the end, when they are on and not sent yet (js/survey.js calls it)
 let AU_BLOCKS = () => false; // the author's scores of this page still wanted: → waits for them (js/survey.js asks its questions after)
 const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.documentElement).getPropertyValue("--font").trim()) || "system-ui, sans-serif"; // the page's own face (css/deck.css), on the medal too
 (function author() {
@@ -13009,11 +13070,11 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
     setTimeout(() => { picked = typeof rdPick !== "undefined" && rdPick === "authors"; try { if (picked) sessionStorage.setItem(PICKED, "1"); else sessionStorage.removeItem(PICKED); } catch (e2) {} paint(); }, 0);
   }, true);
   const site = s2sSite(), title = s2sWhere().siteTitle || site;
-  const KEY = () => "s2s-author:" + site + ":" + s2sUser(); // by reader: another name at the same machine starts afresh
-  let scores = {}, signer = "";
-  const load = () => { scores = {}; signer = ""; try { const s = JSON.parse(localStorage.getItem(KEY()) || "null"); if (s) { scores = s.scores || {}; signer = s.who || ""; } } catch (e) {} };
+  const KEY = () => "s2s-author:" + site + ":" + s2sWho(); // by reader: another name at the same machine starts afresh
+  let scores = {}, signer = "", sentAt = ""; // sentAt: when the scores were sent (the certificate's Send); "" not yet
+  const load = () => { scores = {}; signer = ""; sentAt = ""; try { const s = JSON.parse(localStorage.getItem(KEY()) || "null"); if (s) { scores = s.scores || {}; signer = s.who || ""; sentAt = s.sent || ""; } } catch (e) {} };
   load();
-  const keep = () => { try { localStorage.setItem(KEY(), JSON.stringify({ scores, who: signer })); } catch (e) {} };
+  const keep = () => { s2sVisitKeep(); try { localStorage.setItem(KEY(), JSON.stringify({ scores, who: signer, sent: sentAt })); } catch (e) {} };
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const css = `
 /* the left corner mirrors the right one (js/feedback.js): the medal as the S, 44 px, 14 px in; its pill as “My notes” */
@@ -13034,6 +13095,15 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
 .aubtn { font: 500 17px system-ui, sans-serif; border: 1px solid rgba(128,128,128,.4); background: transparent; color: inherit; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 .aubtn.auprimary { background: #7a5a12; border-color: #7a5a12; color: #fffdf8; } .aubtn:disabled { opacity: .55; cursor: default; }
 .auseal { position: fixed; left: max(14px, env(safe-area-inset-left, 0px)); bottom: calc(64px + env(safe-area-inset-bottom, 0px)); z-index: 60; width: 44px; height: 44px; border: 0; padding: 0; background: none; cursor: pointer; }
+/* this page's scores as the authors gave them, for every reader (not in the study): a small mark beside the medal,
+   its number the page's mean; pointed at, it opens to the right into two bars, Accurate and Quality */
+.aupg { position: fixed; left: calc(max(14px, env(safe-area-inset-left, 0px)) + 52px); bottom: calc(70px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; align-items: center; gap: 0; height: 32px; padding: 0 11px; border: 0; border-radius: 999px; background: #1d2129; color: #f3eee5; font: 600 16px system-ui, sans-serif; cursor: default; overflow: hidden; max-width: 64px; transition: max-width .35s ease, padding .35s ease; white-space: nowrap; }
+.aupg:hover, .aupg:focus-visible { max-width: 460px; } .aupg > b { flex: none; min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
+.aupg .aupgb { display: flex; align-items: center; gap: 6px; margin-left: 10px; font: 500 13px system-ui, sans-serif; opacity: 0; transition: opacity .25s .1s; }
+.aupg:hover .aupgb, .aupg:focus-visible .aupgb { opacity: 1; }
+.aupg .aupgb i { display: block; width: 84px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.18); position: relative; overflow: hidden; }
+.aupg .aupgb i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w, 0%); border-radius: 4px; background: var(--c, #fff); }
+.aupg .aupgb em { font-style: normal; font-weight: 700; min-width: 26px; }
 .auseal { transition: opacity .6s; overflow: visible; } .auseal.auidle:not(:hover):not(:focus-visible) { opacity: .35; }
 .auseal canvas { width: 100%; height: 100%; display: block; filter: drop-shadow(0 3px 8px rgba(0,0,0,.25)); animation: aufloat 4.8s ease-in-out infinite; }
 .auseal::after { content: ""; position: absolute; inset: 2px; border-radius: 30%; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%) no-repeat; background-size: 250% 100%; background-position: 130% 0; animation: aushine 4.8s ease-in-out infinite; mix-blend-mode: screen; }
@@ -13218,6 +13288,8 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
   }
   // ---------------------------------------------------------------- the card, at the end of each page
   const pill = document.createElement("button"); pill.type = "button"; pill.className = "aupill"; pill.hidden = true; document.body.append(pill);
+  const pgm = document.createElement("button"); pgm.type = "button"; pgm.className = "aupg"; pgm.hidden = true; document.body.append(pgm);
+  for (const ev of ["click", "pointerdown"]) pgm.addEventListener(ev, (e) => e.stopPropagation());
   const seal = document.createElement("button"); seal.type = "button"; seal.className = "auseal"; seal.hidden = true; seal.setAttribute("aria-label", "Author certificate"); document.body.append(seal);
   let card = null, resume = null;
   const pid = () => slides[cur].id, done = (id = pid()) => { const s = slides.find((x) => x.id === id); return !(s && scored(s)) || !!(scores[id] && scores[id].a && scores[id].q); };
@@ -13250,10 +13322,20 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
   function paint() {
     // (not while the name is asked, js/feedback.js: the card comes once it is given, "s2s-user")
     if (on() && !introOpen && !introShown && !introSeen() && !document.getElementById("s2suser")) setTimeout(() => { if (on() && !introSeen() && !document.getElementById("s2suser")) intro(); }, 0);
-    const me = on(), cert = AUTHOR_CERT && AUTHOR_CERT.scores ? AUTHOR_CERT : null, n = rated(), N = rateable().length;
+    // (in the study nobody but an author sees scores: no medal, no page's mark, no certificate, so a reader's answers are
+    // not led by them; the owner, 2026-11-22: “user sutdy mode下，除了作者之外的选项看不到这个分数，也不会有badge这一页”)
+    const me = on(), cert = !s2sStudy() && AUTHOR_CERT && AUTHOR_CERT.scores ? AUTHOR_CERT : null, n = rated(), N = rateable().length;
     pill.hidden = !me || !!card; pill.textContent = `Author check · ${n} / ${N}`;
     const src = me ? scores : cert ? cert.scores : null; // an author sees the medal from the start, empty until the first scores
     seal.hidden = !src;
+    // every reader, out of the study: this page's scores as the authors gave them (the owner, 2026-11-22: “在左下角显示
+    // 作者的评分，每一页都显示…hover上去的时候向右展开两个色条，分别显示这一页的作者打分”)
+    { const ps = !me && cert ? cert.scores[pid()] : null, num = (v) => (typeof v === "number" ? v : null);
+      pgm.hidden = !(ps && (ps.a || ps.q)) || !!sheet;
+      if (!pgm.hidden) { const a = num(ps.a), q = num(ps.q), both = [a, q].filter((v) => v != null), mean = both.length ? both.reduce((x, y) => x + y, 0) / both.length : null;
+        const bar = (name, v, c) => `<span>${name}</span><i style="--w:${v != null ? v * 20 : 0}%;--c:${c}"></i><em>${v != null ? v : "N/A"}</em>`;
+        const html = `<b>${mean != null ? mean.toFixed(1) : "N/A"}</b><span class="aupgb">${bar("Accurate", a, "#4ecb85")}${bar("Quality", q, "#7fa6ff")}</span>`;
+        if (pgm.dataset.k !== html) { pgm.dataset.k = html; pgm.innerHTML = html; pgm.setAttribute("aria-label", `The authors' scores of this page: Accurate ${a != null ? a : "N/A"}, Quality ${q != null ? q : "N/A"}`); pgm.title = "The paper's authors scored this page"; } } }
     if (src) { const a = avg("a", src), q = avg("q", src), k = a.toFixed(2) + "|" + q.toFixed(2); // drawn again only when the averages change (its motion is not started over at every click)
       if (k !== sealKey || !seal.firstChild) { sealKey = k; seal.innerHTML = ""; seal.append(flat(44, a, q)); seal.title = `Author certificate · Accurate ${a.toFixed(1)} · Quality ${q.toFixed(1)}`; } }
   }
@@ -13270,11 +13352,11 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
       ${then ? `<button class="aubtn auprimary" type="button" data-x="next" ${done(id) ? "" : "disabled"}>${lastOne ? "Finish" : "Next page →"}</button>` : ""}</div></div>`;
     document.body.append(card); paint();
     card.querySelectorAll(".ausc button").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const all0 = rated() === N; scores[id] = Object.assign({}, scores[id], { [b.dataset.k]: b.dataset.v === "na" ? "na" : +b.dataset.v, at: new Date().toISOString() }); keep();
-      if (done(id)) s2sSend(post("page", [P[cur]])); // as given, to the collection
-      if (!all0 && rated() === N) { closeCard(); openCert(); return; } // every page rated: the certificate opens by itself
+      // (nothing is sent as a page is scored: the scores are looked over, then sent whole, openReview)
+      if (!all0 && rated() === N) { closeCard(); openReview(); return; } // every page rated: the scores to look over, then the certificate
       const r = resume; openCard(r); });
     card.querySelector('[data-x="how"]').onclick = (e) => { e.stopPropagation(); intro(); };
-    const nx = card.querySelector('[data-x="next"]'); if (nx) nx.onclick = (e) => { e.stopPropagation(); const r = resume; closeCard(); if (lastOne && rated() === N) openCert(); else if (r) r(); };
+    const nx = card.querySelector('[data-x="next"]'); if (nx) nx.onclick = (e) => { e.stopPropagation(); const r = resume; closeCard(); if (lastOne && rated() === N) openReview(); else if (r) r(); };
     card.addEventListener("click", (e) => e.stopPropagation()); card.addEventListener("pointerdown", (e) => e.stopPropagation());
   }
   function closeCard() { if (card) card.remove(); card = null; resume = null; paint(); }
@@ -13282,12 +13364,13 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
   addEventListener("pointermove", sealWake, { passive: true }); sealWake();
   pill.onclick = (e) => { e.stopPropagation(); openCard(null); };
   // the medal: the certificate once every page is rated (or the authors' scores came with the simulation); before, this page's card
-  seal.onclick = (e) => { e.stopPropagation(); if (!on() || rated() === rateable().length) openCert(); else if (card) closeCard(); else openCard(null); };
+  seal.onclick = (e) => { e.stopPropagation(); if (!on()) { if (!s2sStudy()) openCert(); } else if (rated() === rateable().length) openReview(); else if (card) closeCard(); else openCard(null); };
   // a press outside the card closes it, and only that: the page does not go on. A way on to a later page (→, the next
   // page's button, a page further on the bar) while this page's scores are not both given shakes the card instead, as
   // the intro does (the owner, 2026-11-21: “点别处还是一样关掉，只有和下一页有关的操作才强调”)
   const nudgeCard = () => { if (!card) return false; card.classList.remove("aushake"); void card.offsetWidth; card.classList.add("aushake"); return true; };
-  const unscored = () => !!card && !done();
+  const unscored = () => !!card && !done(); let AU_PASS = false, certShown = false;
+  const certSeen = () => { try { return certShown || !!sessionStorage.getItem("s2s-cert-seen"); } catch (e) { return certShown; } };
   for (const ev of ["pointerdown", "mousedown", "click"]) document.addEventListener(ev, (e) => {
     if (!card || introOpen || card.contains(e.target) || seal.contains(e.target)) return;
     e.stopPropagation(); e.preventDefault(); if (ev === "click") closeCard();
@@ -13295,18 +13378,39 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
   // → after a page's last step: the card first, when the page has no scores yet
   // (a page's clip held at its set-up plays first: the page ends after it, js/deck.js heldClip)
   const held = () => typeof heldClip === "function" && !!heldClip(slides[cur]);
-  AU_BLOCKS = () => on() && step >= stepsOf(slides[cur]) && !held() && !done();
+  // an exploration (a page of Level 3 opened from the table) has no steps: its card comes when the reader's turns on it
+  // are all done, or when the reader leaves it, never as it opens (the owner, 2026-11-22: “我进入界面之后，我的author check
+  // 就出来了，这个应该是都结束 exploration 打勾才出”)
+  const isExp = (s = slides[cur]) => levelOf(s) === "3" && !!s.dataset.home && !s.dataset.kind;
+  const turnsDone = (s = slides[cur]) => { const t = [...s.querySelectorAll(".turns li.turn, .turns li[data-at]")]; return t.length > 0 && t.every((x) => x.classList.contains("done")); };
+  const ended = () => (isExp() ? turnsDone() : step >= stepsOf(slides[cur]));
+  AU_BLOCKS = () => on() && ended() && !held() && !done();
+  { let was = false; setInterval(() => { // the turns just done: the card, once
+      if (!on() || !isExp() || card || introOpen || done() || !rateable().some((p) => p.i === cur)) { was = isExp() && turnsDone(); return; }
+      const now = turnsDone(); if (now && !was) openCard(null); was = now; }, 700); }
   const fwd0 = forward;
   const nudgeIntro = () => { const c = document.querySelector(".auintro"); if (!c) return false; c.classList.remove("aushake"); void c.offsetWidth; c.classList.add("aushake"); c.querySelector("button")?.focus(); return true; };
   forward = function () {
     if (introOpen) return void nudgeIntro(); // the card that says how it goes: the pages wait for “Start”
-    if (on() && step >= stepsOf(slides[cur]) && !held() && !popOpen() && !endOpen() && !(typeof rdAsking === "function" && rdAsking())) {
+    if (on() && ended() && !held() && !popOpen() && !endOpen() && !(typeof rdAsking === "function" && rdAsking())) {
       if (card && resume) { if (done()) { const r = resume; closeCard(); r(); } else nudgeCard(); return; }
       if (!done()) { openCard(() => forward()); return; } // once scored, → again: the part's questions may come next (js/survey.js)
     }
     fwd0();
   };
-  const go0 = go; go = function (i, s) { if (introOpen && i !== cur) return void nudgeIntro(); if (i > cur && unscored()) return void nudgeCard(); if (card) closeCard(); go0(i, s); paint(); };
+  // no way off a page whose scores are wanted and not given, forward, back or to the table (the owner, 2026-11-22: “依然
+  // 存在没有rate就往下一页跳的情况”): with its card open, the card shakes; without, the card comes, and goes there once scored
+  const owes = () => on() && !done() && rateable().some((p) => p.i === cur) && (isExp() || step >= stepsOf(slides[cur]));
+  const go0 = go; go = function (i, s) {
+    if (introOpen && i !== cur) return void nudgeIntro();
+    // a reader out of the study, a simulation the authors scored: their certificate is a page of its own after the second
+    // page, once a visit (the owner, 2026-11-22: “bandage页面显示到第二页后面一页…给大家一个预期”)
+    if (!on() && !s2sStudy() && AUTHOR_CERT && AUTHOR_CERT.scores && cur === 1 && i === 2 && !certSeen() && !navigator.webdriver) { try { sessionStorage.setItem("s2s-cert-seen", "1"); } catch (e) {} certShown = true; return void openCert(() => go(i, s)); }
+    // (the address keeps the page that stays, so the same way off can be tried again)
+    const stay = () => { try { if (location.hash !== "#" + slides[cur].id) history.replaceState(null, "", "#" + slides[cur].id); } catch (e) {} };
+    if (i !== cur && unscored()) { stay(); return void nudgeCard(); }
+    if (i !== cur && !card && owes() && !AU_PASS) return void openCard(() => { AU_PASS = true; try { go(i, s); } finally { AU_PASS = false; } }), stay();
+    if (card) closeCard(); go0(i, s); paint(); };
   // keys in the card: 1–5 give Accurate, then Quality; the deck's keys stay out of the certificate
   document.addEventListener("keydown", (e) => {
     // the how-it-goes card open: the deck's keys wait (stopped, never prevented: a field of another card, the name's,
@@ -13320,9 +13424,41 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
   }, true);
   // ---------------------------------------------------------------- the certificate
   let sheet = null, M = null;
-  function closeCert() { if (M) M.stop(); M = null; if (sheet) sheet.remove(); sheet = null; paint(); }
-  function openCert() {
-    closeCert();
+  let certThen = null;
+  function closeCert() { if (M) M.stop(); M = null; if (sheet) sheet.remove(); sheet = null; paint(); const t = certThen; certThen = null; if (t) t(); }
+  // The scores looked over before they are sent (the owner, 2026-11-22: “我这个rate也要做summary，summary 通过后再提交…
+  // 鼠标分级hover可以看页面的打分，如果有没有打分的页面也着重显示出来，并且允许用户在这个界面修改分数”): the board of
+  // all the pages (js/feedback.js, S2S_BOARD), each page's two scores on its tile, a page not scored framed and
+  // pulsing; the page looked at has its scores beside the board, to give or change; with every page scored,
+  // “Confirm and sign” opens the certificate, which sends them.
+  function openReview(then) {
+    closeCard(); closeCert();
+    if (typeof S2S_BOARD !== "function") { openCert(); return; }
+    const R = rateable(), has = (i) => R.some((p) => p.i === i), fmt = (v) => (v === "na" ? "N/A" : v || "–"), left = () => R.filter((p) => !done(p.id)).length;
+    let went = false;
+    const api = S2S_BOARD({ label: "Your scores, before they are sent",
+      top: "Your scores, before they are sent. Rest on a page to see it; click it to give or change its scores. A page framed in orange is not scored yet.",
+      badge: (p) => (!has(p.i) ? "" : done(p.id) ? `<span>A ${fmt(scores[p.id].a)}</span><span>Q ${fmt(scores[p.id].q)}</span>` : `<span class="fbwant">not scored</span>`),
+      miss: (p) => has(p.i) && !done(p.id),
+      side(el, i, api) {
+        const p = i >= 0 ? api.pages[i] : null;
+        if (!p) { el.innerHTML = `<h3>Your scores</h3><p>${R.length} pages carry the paper's content. ${left() ? `<b>${left()} not scored yet</b>: they are framed in orange.` : "All are scored."}</p><p class="fbdim">Click a page to give or change its scores here. Nothing is sent before you confirm.</p>`; return; }
+        if (!has(i)) { el.innerHTML = `<h3>${esc(p.name)}</h3><p class="fbdim">Page ${i + 1}. This page has none of the paper's content: it takes no scores.</p>`; return; }
+        const s = scores[p.id] || {}, scale = (k) => ["na", 1, 2, 3, 4, 5].map((v) => `<button type="button" data-k="${k}" data-v="${v}" class="${s[k] === v ? "auon" : ""}${v === "na" ? " auna" : ""}" aria-pressed="${s[k] === v}">${v === "na" ? "N/A" : v}</button>`).join("");
+        el.innerHTML = `<h3>${esc(p.name)}</h3><p class="fbdim">Page ${i + 1} · ${done(p.id) ? "scored" : "<b>not scored yet</b>"}</p>
+          <div class="aum aua"><div class="aulab"><b>Accurate</b><span>Does this page say what the paper says?</span></div><div class="ausc">${scale("a")}</div></div>
+          <div class="aum auq"><div class="aulab"><b>Quality</b><span>Is it clear and well made?</span></div><div class="ausc">${scale("q")}</div></div>
+          <p><button type="button" class="fbbtn" data-x="open">Open this page</button></p>`;
+        el.querySelectorAll(".ausc button").forEach((b) => b.onclick = () => { scores[p.id] = Object.assign({}, scores[p.id], { [b.dataset.k]: b.dataset.v === "na" ? "na" : +b.dataset.v, at: new Date().toISOString() }); keep(); api.refresh(); this.side(el, i, api); paint(); });
+        el.querySelector('[data-x="open"]').onclick = () => { went = true; api.close(); go(i, 0); };
+      },
+      foot(el, api) { const n = left(); el.innerHTML = `<span>${n ? `${n} of ${R.length} pages not scored` : `All ${R.length} pages scored`}</span><button type="button" class="fbbtn fbgo" ${n ? "disabled" : ""}>Confirm and sign →</button>`;
+        el.querySelector("button").onclick = () => { went = true; api.close(); openCert(); }; },
+      onclose() { if (!went && then) then(); } });
+    const first = R.find((p) => !done(p.id)); if (first) api.show(first.i);
+  }
+  function openCert(then) {
+    closeCert(); certThen = then || null;
     const me = on(), P = rateable(), N = P.length, src = me ? scores : (AUTHOR_CERT && AUTHOR_CERT.scores) || {}, a = avg("a", src), q = avg("q", src);
     const n = P.filter((p) => src[p.id] && src[p.id].a && src[p.id].q).length, who = me ? signer || s2sUser() || "A paper author" : (AUTHOR_CERT && AUTHOR_CERT.who) || "The paper's authors";
     const date = me ? new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : (AUTHOR_CERT && AUTHOR_CERT.date) || "";
@@ -13330,9 +13466,9 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
     const color = (k, v) => v === "na" ? "rgba(128,128,128,.45)" : v ? `color-mix(in srgb, ${k === "a" ? "#1f8a4c" : "#2453a6"} ${Math.round(op(v) * 100)}%, rgba(128,128,128,.25))` : "rgba(128,128,128,.25)";
     const row = (k, name) => `<div class="auhr"><span>${name}</span><div class="aucells" style="${cols}">${P.map((p) => { const v = src[p.id] && src[p.id][k]; return `<button type="button" class="aucell" data-p="${p.i}" style="background:${color(k, v)}" title="Page ${p.i + 1} · ${esc(p.name)}: ${v === "na" ? "N/A" : v || "not rated"}" aria-label="Page ${p.i + 1}, ${esc(p.name)}: ${name} ${v || "not rated"}">${v === "na" ? "–" : v || ""}</button>`; }).join("")}</div></div>`;
     sheet = document.createElement("div"); sheet.className = "aucert"; sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", "Author certificate");
-    sheet.innerHTML = `<div class="auin"><div class="autop"><button class="aubtn" type="button" data-x="back">← Back to the pages</button><span class="augrow"></span>${me ? `<button class="aubtn auprimary" type="button" data-x="send" ${n ? "" : "disabled"}>Send to the Sense2Sim team</button>` : ""}</div>
+    sheet.innerHTML = `<div class="auin"><div class="autop"><button class="aubtn${then ? " auprimary" : ""}" type="button" data-x="back">${then ? "Continue →" : "← Back to the pages"}</button><span class="augrow"></span>${me ? `<button class="aubtn auprimary" type="button" data-x="send" ${n ? "" : "disabled"}>Send to the Sense2Sim team</button>` : ""}</div>
       <div class="augrid"><div class="aubox"><div class="aumedal"></div><span style="font-size:16px;opacity:.75;text-align:center">The upper curve of the S grows with Accurate, the lower one with Quality. Drag to turn it; press it to see the back.</span>${n < N ? `<span class="audraft">Draft · ${N - n} of ${N} pages not rated</span>` : ""}</div>
-      <div class="aurec"><div><div class="aueye">Sense2Sim · Author certificate</div><h1>${esc(title)}</h1><p class="ausign" style="margin:6px 0 0;opacity:.75">Each page of the simulation checked by ${esc(who)}${date ? ` · ${esc(date)}` : ""}</p></div>
+      <div class="aurec"><div><div class="aueye">Sense2Sim · Author certificate</div><h1>${esc(title)}</h1><p class="ausign" style="margin:6px 0 0;opacity:.75">Each page of the simulation checked by ${esc(who)}${date ? ` · ${esc(date)}` : ""}</p>${!me ? `<p style="margin:10px 0 0;font-size:18px">The paper's authors went through this simulation page by page and scored each one: how accurately it says what the paper says, and how well it is made. This is what to expect. On every page, the mark at the bottom left shows that page's own scores.</p>` : ""}</div>
       <div class="austats"><div class="austat aua"><span class="auk">Accurate</span><span class="auv">${a ? `${a.toFixed(1)}<small> / 5</small>` : "–"}</span></div><div class="austat auq"><span class="auk">Quality</span><span class="auv">${q ? `${q.toFixed(1)}<small> / 5</small>` : "–"}</span></div><div class="austat"><span class="auk">Pages rated</span><span class="auv">${n}<small> / ${N}</small></span></div></div>
       <div class="auheat"><span style="font-size:16px;opacity:.75">Every page. Press a square to open that page.</span>${row("a", "Accurate")}${row("q", "Quality")}<div class="auhr"><span></span><div class="aulvs" style="${spans}">${lv.map((l) => `<span>${esc(levelName(l))}</span>`).join("")}</div></div></div>
       ${me ? `<div class="aubox" style="justify-items:stretch"><div class="aufield"><label for="auwho">Your name, as it shows on the certificate</label><input id="auwho" value="${esc(signer || s2sUser())}" placeholder="A paper author"></div></div>` : ""}</div></div></div>`;
@@ -13352,7 +13488,10 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
     btn.disabled = true; btn.textContent = "Sending…";
     const { ok, why } = await s2sPost(post("certificate", rateable()));
     btn.textContent = ok ? "Sent ✓ Thank you" : `Not sent (${why || "no answer"}): try again`; btn.disabled = ok;
+    if (ok) { sentAt = new Date().toISOString(); keep(); }
   }
+  AU_REVIEW = (then) => { if (!on() || sentAt || !Object.keys(scores).length) return then && then(); openReview(then); };
+  addEventListener("beforeunload", (e) => { if (on() && !sentAt && Object.keys(scores).length) { e.preventDefault(); e.returnValue = ""; } }); // scores given and not sent
   // the reader picked or changed: the pill and the seal follow; another reader's name: that reader's scores
   addEventListener("click", () => setTimeout(paint, 0), true);
   addEventListener("s2s-user", () => { if (card) closeCard(); load(); introShown = false; sealKey = ""; paint(); });
@@ -13402,11 +13541,11 @@ const SURVEY = [
   const qs = new URLSearchParams(location.search);
   if (qs.get("survey") === "0" || (navigator.webdriver && qs.get("survey") !== "1")) return;
   if (!s2sStudy() && qs.get("survey") !== "1") return; // User study mode off: the think-aloud notes alone (js/feedback.js)
-  const site = s2sSite(), KEY = () => "s2s-survey:" + site + ":" + s2sUser();
+  const site = s2sSite(), KEY = () => "s2s-survey:" + site + ":" + s2sWho();
   // what is answered is kept by reader: another name at the same machine (a study's shared computer) is asked afresh
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY()) || "{}") || {}; } catch (e) { return {}; } };
   let done = read(); addEventListener("s2s-user", () => { done = read(); seen.clear(); const p = partOf(slides[cur]); if (p) seen.add(p); });
-  const keep = () => { try { localStorage.setItem(KEY(), JSON.stringify(done)); } catch (e) {} marks(); };
+  const keep = () => { s2sVisitKeep(); try { localStorage.setItem(KEY(), JSON.stringify(done)); } catch (e) {} marks(); };
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const css = `
 .svshade { position: fixed; inset: 0; z-index: 76; background: rgba(10,12,16,.5); }
@@ -13484,13 +13623,54 @@ const SURVEY = [
       for (const t of sets) {
         const S = t.S, at = new Date().toISOString(), text = c.querySelector(`#svtext${t.n}`).value.trim(), o = c.querySelector(`[data-other][data-s="${t.n}"]`), oth = o ? o.value.trim() : "";
         done[t.key] = { at, r: t.rows.map((r, i) => ({ q: r[0], a: t.ans.r[i] })), picks: [...t.ans.picks], other: oth, text }; keep();
-        send({ kind: "survey", site, ...s2sWhere(), version: s2sKit(), user: s2sUser(), reader: s2sReader(), ua: navigator.userAgent, section: S.title, at,
-          answers: [...t.rows.map((r, i) => ({ q: `${S.title} · ${r[0]}`, a: t.ans.r[i] === "na" ? "N/A" : +t.ans.r[i] })), ...(S.picks ? [{ q: `${S.title} · Studies tried`, a: [...t.ans.picks].map((p) => p === "Other" && oth ? `Other: ${oth}` : p).join("; ") }] : []), { q: `${S.title} · Feedback`, a: text }] });
+        delete done[t.key].sent; keep(); // (not sent as it is answered: looked over, then sent whole, review; answered again, to send again)
       }
       sh.remove(); c.remove(); open = false; if (then) then();
     };
     setTimeout(() => (c.querySelector(".svpick input") || c.querySelector(".svsc button")).focus(), 0);
   }
+  // The answers looked over before they are sent (the owner, 2026-11-22: “User study 一样，也要有summary形式，也是复用鼠标
+  // hover，然后在选页框外，显示属于这一个section的问卷内容，也允许修改… 最后确认一遍后再提交”): the board of all the pages
+  // (js/feedback.js, S2S_BOARD); beside it, the questions of the part the page looked at belongs to, with the answers
+  // given, and a button to change them (the same card, its answers as they were); the sets with no page of their own
+  // (Research Inspiration, Overall) picked from the list above them. “Submit my answers” sends every set, once all
+  // that apply are answered. review(then): then() when it closes, sent or not.
+  const applies = (k) => k === "overall" || (k === "inspire" ? researcher() : has[k]);
+  const setsNow = () => ["intro", "sim", "universe", "world", "explore", "inspire", "overall"].filter(applies);
+  const unsent = () => setsNow().filter((k) => done[k] && !done[k].sent);
+  const payload = (k) => { const S = SURVEY.find((x) => x.key === k), d = done[k];
+    return { kind: "survey", site, ...s2sWhere(), version: s2sKit(), user: s2sUser(), reader: s2sReader(), ua: navigator.userAgent, section: S.title, at: d.at,
+      answers: [...d.r.map((x) => ({ q: `${S.title} · ${x.q}`, a: x.a === "na" ? "N/A" : +x.a })), ...(S.picks ? [{ q: `${S.title} · Studies tried`, a: (d.picks || []).map((p) => (p === "Other" && d.other ? `Other: ${d.other}` : p)).join("; ") }] : []), { q: `${S.title} · Feedback`, a: d.text || "" }] }; };
+  function review(then) {
+    if (typeof S2S_BOARD !== "function" || !unsent().length) { if (typeof S2S_BOARD !== "function") for (const k of unsent()) { send(payload(k)); done[k].sent = new Date().toISOString(); keep(); } return then && then(); }
+    let pickK = "", sending = false;
+    const K = setsNow(), title = (k) => SURVEY.find((x) => x.key === k).title, missing = () => K.filter((k) => !done[k]);
+    const show = (el, k, api) => {
+      const S = SURVEY.find((x) => x.key === k), d = done[k];
+      el.innerHTML = `<div class="svrl">${K.map((x) => `<button type="button" class="svrk${x === k ? " svon" : ""}${done[x] ? "" : " svmiss"}" data-k="${x}">${esc(title(x))}${done[x] ? " ✓" : ""}</button>`).join("")}</div>
+        ${!k ? `<p>Your answers, set by set. Click a page, or a set above, to see its questions. Nothing is sent before you submit.</p>` : `<h3>${esc(S.title)}</h3><p class="fbdim">${esc(S.about)}</p>
+        ${d ? `${S.picks ? `<p><b>Studies tried</b><br>${esc((d.picks || []).map((p) => (p === "Other" && d.other ? `Other: ${d.other}` : p)).join("; ") || "–")}</p>` : ""}
+          <dl class="svra">${d.r.map((x) => `<div><dt>${esc(x.q)}</dt><dd>${x.a === "na" ? "N/A" : esc(x.a) + " / 5"}</dd></div>`).join("")}</dl>
+          <p><b>Feedback</b><br>${d.text ? esc(d.text) : `<span class="fbdim">(none)</span>`}</p>` : `<p><b>Not answered yet.</b></p>`}
+          <p><button type="button" class="fbbtn" data-x="edit">${d ? "Change these answers" : "Answer now"}</button></p>`}`;
+      el.querySelectorAll(".svrk").forEach((b) => b.onclick = () => { pickK = b.dataset.k; show(el, pickK, api); });
+      const ed = el.querySelector('[data-x="edit"]'); if (ed) ed.onclick = () => ask(k, () => { api.refresh(); show(el, k, api); });
+    };
+    S2S_BOARD({ label: "Your answers, before they are sent",
+      top: "Your answers, before they are sent. Click a page to see the questions of its part, and change an answer if you like.",
+      badge: (p) => { const k = partOf(slides[p.i]); return !k || !applies(k) ? "" : done[k] ? `<span>${esc(title(k))} ✓</span>` : `<span class="fbwant">${esc(title(k))}: not answered</span>`; },
+      miss: (p) => { const k = partOf(slides[p.i]); return !!k && applies(k) && !done[k]; },
+      side(el, i, api) { const k = i >= 0 ? partOf(slides[i]) : ""; show(el, k && applies(k) ? k : pickK || missing()[0] || "", api); },
+      foot(el, api) { const m = missing(), u = unsent();
+        el.innerHTML = `<span>${m.length ? `${m.length} set${m.length > 1 ? "s" : ""} not answered` : u.length ? `${K.length} sets answered` : "Sent ✓ Thank you"}</span><button type="button" class="fbbtn fbgo" ${m.length || !u.length || sending ? "disabled" : ""}>Submit my answers</button>`;
+        el.querySelector("button").onclick = async () => { sending = true; api.refresh();
+          for (const k of unsent()) { send(payload(k)); done[k].sent = new Date().toISOString(); } keep(); sending = false; api.refresh(); setTimeout(() => api.close(), 900); }; },
+      onclose() { if (then) then(); } });
+  }
+  { const st = document.createElement("style"); st.textContent = `.svrl { display: flex; flex-wrap: wrap; gap: 6px; } .svrk { all: unset; cursor: pointer; font: 600 14px system-ui, sans-serif; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(128,128,128,.4); }
+.svrk.svon { background: #ff8a5b; border-color: #ff8a5b; color: #1a1a1a; } .svrk.svmiss { border-color: #ff8a5b; box-shadow: 0 0 0 2px rgba(255,138,91,.5); }
+.svra { margin: 0; display: grid; gap: 6px; } .svra > div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(128,128,128,.2); padding-bottom: 4px; } .svra dt { font-weight: 500; } .svra dd { margin: 0; font-weight: 700; white-space: nowrap; }`; document.head.append(st); }
+  addEventListener("beforeunload", (e) => { if (unsent().length) { e.preventDefault(); e.returnValue = ""; } }); // answers given and not sent
   // where each set comes, on the bar at the foot of the page (js/deck.js, #dots): after its page, an orange diamond,
   // hollow until answered; its sets named on pointing at it
   const mcss = document.createElement("style");
@@ -13544,6 +13724,8 @@ const SURVEY = [
   // its part was met on this visit (a reload forgets that), with Research Inspiration and Overall, in one card
   const ALL = ["intro", "sim", "universe", "world", "explore"];
   const finalKeys = () => ALL.concat(END);
+  // the end: the answers looked over and sent, then the author's scores (js/author.js), then the notes (js/feedback.js)
+  const wrapUp = () => review(() => (typeof AU_REVIEW === "function" ? AU_REVIEW(() => S2S_REMIND()) : S2S_REMIND()));
   // → at the end of a part: its questions first
   const fwd1 = forward;
   // the page that asks who the reader is: the pages after it wait for a kind picked (the owner, 2026-11-21: “即使没有选定，
@@ -13565,7 +13747,7 @@ const SURVEY = [
       const tabled = slides.some((x) => x.dataset.kind === "table");
       const part = partOf(s), k = (part === "intro" && cur === lastOf("1")) ? "intro" : (part === "sim" && cur === lastOf("2")) ? "sim" : (!tabled && (part === "universe" || part === "world")) ? part : "";
       if (k && want(k)) return ask(k, () => fwd1());
-      if (cur === slides.length - 1) return chain(finalKeys(), () => S2S_REMIND()); // then the notes not sent yet, if any (js/feedback.js)
+      if (cur === slides.length - 1) return chain(finalKeys(), wrapUp); // then the notes not sent yet, if any (js/feedback.js)
       if (!slides.some((x) => x.dataset.kind === "table") && levelOf(s) === "3" && slides.slice(cur + 1).every((x) => levelOf(x) !== "3" || !partOf(x))) return chain(["explore"].filter((x) => seen.has(x)), () => fwd1());
     }
     fwd1();
@@ -13573,11 +13755,14 @@ const SURVEY = [
   // the reader says they are done exploring (the table's last question, js/table.js): Exploration first
   // with the Sensing Universe's and the Sensing World's, those the reader opened
   const atEnd = () => ["intro", "sim", ...LIT, "explore", ...END]; // every set not answered yet (chain keeps those wanted)
-  for (const b of document.querySelectorAll('[data-end="done"]')) b.addEventListener("click", (e) => { if (open || !atEnd().some(want)) return; e.stopImmediatePropagation(); e.preventDefault(); chain(atEnd(), () => b.click()); }, true);
+  for (const b of document.querySelectorAll('[data-end="done"]')) b.addEventListener("click", (e) => { if (open || !atEnd().some(want)) return; e.stopImmediatePropagation(); e.preventDefault(); chain(atEnd(), () => review(() => b.click())); }, true);
   // the last page: the last questions, a moment after it opens
   let lastT = 0;
   const go1 = go;
-  go = function (i, s) { if (unpicked() && i > cur) return nudge(); go1(i, s); visited.add(slides[cur].id); const p = partOf(slides[cur]); if (p) seen.add(p); setTimeout(atTable, 700); clearTimeout(lastT); if (cur === slides.length - 1) lastT = setTimeout(() => { if (cur === slides.length - 1 && !open) chain(finalKeys(), () => S2S_REMIND()); }, 3000); };
+  // a part left by any way on (the bar, the table of contents, a skip: not → alone) asks its set first (the owner,
+  // 2026-11-22: “有用户有时候会碰到section结束的时候问卷没有跳出来的情况”)
+  const leaving = (i) => { const p = partOf(slides[cur]); if ((p !== "intro" && p !== "sim") || !want(p)) return ""; return i > lastOf(p === "intro" ? "1" : "2") ? p : ""; };
+  go = function (i, s) { if (!open && i !== cur) { const k = leaving(i); if (k) return ask(k, () => go(i, s)); } go1(i, s); visited.add(slides[cur].id); const p = partOf(slides[cur]); if (p) seen.add(p); setTimeout(atTable, 700); clearTimeout(lastT); if (cur === slides.length - 1) lastT = setTimeout(() => { if (cur === slides.length - 1 && !open) chain(finalKeys(), wrapUp); }, 3000); };
   { const p = partOf(slides[cur]); if (p) seen.add(p); }
 })();
 </script>
