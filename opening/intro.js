@@ -3,7 +3,7 @@
      1  three first pages, large, under the title (their titles are general and made up: no paper's name)
      2  the view pulls back: more and more papers, smaller and smaller, a wall of them, nearer and farther
         ones moving apart (parallax)
-     3  each paper shrinks to a star and flies to its place in the Sensing Universe: the galaxies of the LLAP
+     3  each paper shrinks to a star and flies to its place in the Sensing Universe: the galaxies of the per-paper
         page's flight (one cluster for each way of sensing, the oldest paper at its heart, the newest at its rim)
      4  the stars and their dust turn to particles and settle as a point cloud of the Sensing World's everyday
         spaces, a sensing pulse running through it
@@ -55,7 +55,7 @@
   var FLY_DUR = 0.42;
 
   // ---------------------------------------------------------------- the papers
-  // the galaxies' colours, as the LLAP page's flight (night sky), and darker ones for a white sheet
+  // the galaxies' colours, as the per-paper page's flight (night sky), and darker ones for a white sheet
   var MOD_NIGHT = { RF: "#6b98ff", Acoustic: "#d9f272", Optical: "#ff8a5b", Electric: "#c7a2ff", Mechanical: "#aab5c7", Magnetic: "#f0c674" };
   var MOD_SHEET = { RF: "#2c5fd6", Acoustic: "#6a8a00", Optical: "#d6501f", Electric: "#7a4ccc", Mechanical: "#5a677d", Magnetic: "#b07c08" };
   var MODS = DATA.mods, COUNTS = DATA.counts, HEROES = DATA.heroes || [];
@@ -82,7 +82,7 @@
   }
 
   // the universe: each cluster round an ellipse, its size by its count; its papers on a spiral, the oldest at the
-  // heart (the LLAP page's uniBuild, in units of 840 px; upright on a narrow screen)
+  // heart (the per-paper page's uniBuild, in units of 840 px; upright on a narrow screen)
   function layoutStars(portrait) {
     var rx = portrait ? 0.4 : 640 / 840, ry = portrait ? 0.86 : 250 / 840;
     var pos = new Float32Array(N * 2), gal = [];
@@ -290,7 +290,7 @@
     for (var m = 0; m < M; m++) { var k = m % N, o = m * STRIDE; buf[o] = starsNow.pos[k * 2]; buf[o + 1] = starsNow.pos[k * 2 + 1]; }
     slotLists();
   }
-  // the names shown by the stars: twelve labels, each with a part of one galaxy to itself (the galaxy cut like a
+  // the names shown by the stars: twelve labels, each with a part of one cluster to itself (the cluster cut like a
   // cake into as many parts as it has labels; not its heart, where the stars crowd, nor above its own name)
   var SLOTS = 12, SLOT_GAL = [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 0, 0], slotStars = [];
   function slotLists() {
@@ -691,7 +691,7 @@
     gl.enableVertexAttribArray(6); gl.vertexAttribPointer(6, 2, gl.FLOAT, false, 0, 0); gl.vertexAttribDivisor(6, 0);
     gl.bindVertexArray(null);
     atlas = makeAtlas(); heads = makeHeads();
-    // the names drawn in the scene: each galaxy's, and a few papers' at a time, by their stars
+    // the names drawn in the scene: each cluster's, and a few papers' at a time, by their stars
     MODS.forEach(function (m, g) { var el = document.createElement("span"); el.className = "glabel"; el.textContent = m; el.style.color = MOD_NIGHT[m] || "#9ba8bb"; labels.appendChild(el); galLabels.push({ el: el, g: g }); });
     for (var sl = 0; sl < SLOTS; sl++) { var se = document.createElement("span"); se.className = "slabel"; labels.appendChild(se); starLabels.push({ el: se, c: null, k: -1, w: 0, h: 0 }); }
   }
@@ -780,9 +780,9 @@
       nameRects.push([gx - 8, gy - 6, gx + gw + 8, gy + L.el.offsetHeight + 6]);
     });
     // the papers' names: as the stars twinkle, a few shine out in turn and show whose they are. Each label has its
-    // own part of one galaxy (slotLists) and takes a new star there every few seconds: which one follows from the
+    // own part of one cluster (slotLists) and takes a new star there every few seconds: which one follows from the
     // time alone, so a still at one time is always the same. A name stands beside its star, on the side away from
-    // its galaxy's heart, never on a galaxy's name; where two names would still meet, the later one waits.
+    // its cluster's heart, never on a cluster's name; where two names would still meet, the later one waits.
     var nShow = la > 0.001 ? (W < 700 ? 6 : SLOTS) : 0, TURN = 3.6, shown = [];
     function meet(r1, r2) { return r1[0] < r2[2] && r2[0] < r1[2] && r1[1] < r2[3] && r2[1] < r1[3]; }
     starLabels.forEach(function (L, j) {
