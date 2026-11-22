@@ -2500,6 +2500,7 @@ a.ppill.kb:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--mea
 <nav id="nav" aria-label="Pages">
   <button type="button" id="prev" aria-label="Back">←</button>
   <button type="button" id="next" aria-label="Next">→</button>
+  <button type="button" id="overview" aria-label="All pages" title="All pages (O)" hidden><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1.5" y="1.5" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9.5" y="1.5" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="9.5" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
   <div id="dots"></div>
   <span class="grow"></span>
   <span class="vh" aria-live="polite">LLAP · <span id="part-name">1 · What it is</span> · <span id="page-name"></span> · <span id="count">1 / 6</span></span>
@@ -12552,12 +12553,24 @@ const FB_H2C = "https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2can
 const PAGE_THUMBS = {"about":"thumbs/about.jpg","all":"thumbs/all.jpg","c1":"thumbs/c1.jpg","c2":"thumbs/c2.jpg","c3":"thumbs/c3.jpg","demo":"thumbs/demo.jpg","exp-ablation":"thumbs/exp-ablation.jpg","exp-array":"thumbs/exp-array.jpg","exp-general":"thumbs/exp-general.jpg","exp-kg":"thumbs/exp-kg.jpg","exp-kg2":"thumbs/exp-kg2.jpg","exp-physics":"thumbs/exp-physics.jpg","exp-related":"thumbs/exp-related.jpg","exp-world":"thumbs/exp-world.jpg","explore":"thumbs/explore.jpg","gap":"thumbs/gap.jpg","how":"thumbs/how.jpg","idea":"thumbs/idea.jpg","inuse":"thumbs/inuse.jpg","level-1":"thumbs/level-1.jpg","motivation":"thumbs/motivation.jpg","open":"thumbs/open.jpg","s1":"thumbs/s1.jpg","s2":"thumbs/s2.jpg","s3":"thumbs/s3.jpg","see-2":"thumbs/see-2.jpg","see":"thumbs/see.jpg","sense2sim":"thumbs/sense2sim.jpg","sim-real":"thumbs/sim-real.jpg","start-2":"thumbs/start-2.jpg","start":"thumbs/start.jpg","terms":"thumbs/terms.jpg","title":"thumbs/title.jpg","use":"thumbs/use.jpg","who":"thumbs/who.jpg"};
 // what each answer says it came from: the simulation (its repository's name, Sense2Sim-<paper>), the kit's version and
 // the kind of reader (as picked on the first page, or the default kind marked "not picked"); tools/site.mjs fills S2S_SITE
-const S2S_SITE = {"name":"Sense2Sim-LLAP","kit":"6.0.0-alpha.84","title":"Device-Free Gesture Tracking Using Acoustic Signals","url":"https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim-LLAP/","build":"20261122T035511"};
+const S2S_SITE = {"name":"Sense2Sim-LLAP","kit":"6.0.0-alpha.84","title":"Device-Free Gesture Tracking Using Acoustic Signals","url":"https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim-LLAP/","build":"20261122T061748","opening":true};
 const s2sSite = () => S2S_SITE.name || (location.pathname.match(/\/(Sense2Sim-[^/]+)\//) || [])[1] || document.title;
 const s2sKit = () => S2S_SITE.kit || "";
 // A reader never works on an older page than the site's (the owner, 2026-11-22: “每次进入强制刷新浏览器缓存”): as the page
 // opens it asks the site's version.json, never from a cache; where that names a newer build than this page's, the page
 // is loaded again once, at an address the caches have not seen (?v=<build>).
+// The opening (tools/site.mjs --opening, opening/ beside the page; the owner, 2026-11-22: “现在不是simulator变成这里的一个
+// 功能块了嘛，所以exit之后回到这一页”): a visit opens there first (once: the opening marks the visit, sessionStorage
+// "s2s-opening"); the simulator's first page, and so its end's “Start from the beginning” and the bar's Sense2Sim, go back
+// to it, to how it works whole (#how). The address's settings (?study=1) go along.
+(function opening() {
+  if (typeof document === "undefined" || navigator.webdriver || !S2S_SITE.opening) return;
+  let seen = false; try { seen = !!sessionStorage.getItem("s2s-opening"); } catch (e) {}
+  if (!seen && !location.hash) { location.replace("opening/" + location.search); return; }
+  const back = () => S2S_WRAPUP(() => { location.href = "opening/" + location.search + "#how"; });
+  const wrap = () => { const g0 = go; go = function (i, s) { if (i === 0 && cur !== 0) return back(); g0(i, s); }; };
+  if (typeof go === "function") wrap(); else addEventListener("DOMContentLoaded", wrap);
+})();
 (function freshPage() {
   if (typeof document === "undefined" || navigator.webdriver || !S2S_SITE.build || !/^https?:/.test(location.protocol)) return;
   fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((v) => {
@@ -12602,6 +12615,9 @@ const s2sVisitTake = (v) => { s2sVisitId = v; s2sVisitNew = false; try { session
   if (other) newReader(); else if (s2sVisitNew && (!navigator.webdriver || ["feedback", "survey", "author"].some((k) => q.get(k) === "1"))) newReader(); // a new visit: no kind picked yet, every guide to see again
   const asked = (() => { try { return !!sessionStorage.getItem("s2s-user-asked"); } catch (e) { return false; } })();
   if (given || asked || q.get("feedback") === "0" || (navigator.webdriver && !["feedback", "survey", "author"].some((k) => q.get(k) === "1"))) return;
+  // the name or study ID is asked in the user study alone (the owner, 2026-11-22: “如果不是user study模式，不要挑出user ID
+  // 填的”): a reader out of it writes their notes with no name (the checks' ?survey=1 and ?author=1 ask it too)
+  if (!s2sStudy() && q.get("survey") !== "1" && q.get("author") !== "1") return;
   const sh = document.createElement("div"), c = document.createElement("div");
   sh.style.cssText = "position:fixed;inset:0;z-index:95;background:rgba(10,12,16,.55)";
   c.setAttribute("role", "dialog"); c.setAttribute("aria-modal", "true"); c.setAttribute("aria-labelledby", "s2suh");
@@ -12661,6 +12677,86 @@ if (typeof document !== "undefined") { try { if (JSON.parse(localStorage.getItem
 // (framed, pulsing); side: a panel beside the board, filled for the page looked at (i, −1 for none); foot: buttons at
 // the top right. api: { close(), refresh(), show(i), pages }. A click on a tile looks at it (it opens no page).
 let S2S_BOARD = null;
+// The end of a visit, however it ends (the last page, the table's “No, end here”, back to the opening): the answers
+// looked over and sent (js/survey.js sets it), then the author's scores (js/author.js, AU_REVIEW), then then().
+// The owner, 2026-11-22: “到最后退出，都没让我补打分，打分的summary也没看到”.
+// The end of a visit, one view (the owner, 2026-11-22: “think aloud汇总也要，即使他没有写任何的…所有退出途径都要触发”; then
+// “能不能把这个页面选择作为中心，然后不变，选中一页的时候3个界面在右边铺开，然后note框选过的框，在这个页面选择视图要有”):
+// the board of all the pages stays in the middle; a page clicked, its Questions (js/survey.js), its Scores
+// (js/author.js, an author's) and its Notes (below) stand one above the other on the right, each to see and change;
+// none clicked, what belongs to no page (the last sets of questions, the name signed, the notes on the whole
+// simulation). Each note's box is drawn on its page's tile. “Submit all” sends everything at once, once what is
+// required is given. Each part registers in S2S_TABS as { key, label, hidden, badge(p), boxes(p), miss(p),
+// panel(el, i, redraw), ready() → why not yet, or "", pending(), send() → Promise }.
+const S2S_TABS = [];
+let S2S_ENDING = false, S2S_END_THEN = null, S2S_END_API = null;
+// the overview (the bar's button after → and ←; the owner, 2026-11-22: “在左边这个左右后面加一个overview图标，点进去就是选页，
+// user study模式下就是我们上面说的这些，非user study依然可以用来选页快速跳转和看think aloud”): the same board, at any time;
+// each page's part beside it (in the study its questions, scores and notes; out of it, its notes) and the way to it
+let S2S_OVERVIEW = false;
+function s2sOverview() { if (S2S_ENDING) return; S2S_OVERVIEW = true; s2sEnd(null, cur); }
+function s2sEnd(then, at) {
+  if (then) { S2S_END_THEN = then; S2S_OVERVIEW = false; }
+  const ovw = S2S_OVERVIEW;
+  const tabs = ["questions", "scores", "notes"].map((k) => S2S_TABS.find((t) => t.key === k)).filter((t) => t && !t.hidden);
+  if (S2S_ENDING) return;
+  // (no board where the notes are off, ?feedback=0: each part ends on its own, alone(then): the answers sent, the certificate)
+  if (!tabs.length || typeof S2S_BOARD !== "function") { const t = S2S_END_THEN; S2S_END_THEN = null; const alone = tabs.filter((x) => x.alone);
+    const run = (k) => (k < alone.length ? alone[k].alone(() => run(k + 1)) : t && t()); return run(0); }
+  S2S_ENDING = true;
+  if (!document.getElementById("s2sendcss")) { const st = document.createElement("style"); st.id = "s2sendcss"; st.textContent = `.s2ssec { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(128,128,128,.28); }
+.s2ssec > h4 { margin: 0; font: 700 13px/1 system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; opacity: .65; } .s2ssec textarea { width: 100%; min-height: 64px; box-sizing: border-box; font: 16px/1.4 system-ui, sans-serif; color: inherit; background: rgba(128,128,128,.08); border: 1px solid rgba(128,128,128,.4); border-radius: 8px; padding: 8px; }
+.s2snote { display: grid; gap: 6px; } .s2snote .fbrow { display: flex; gap: 8px; flex-wrap: wrap; } .s2sname { width: 100%; box-sizing: border-box; font: 17px system-ui, sans-serif; padding: 8px; border-radius: 8px; border: 1px solid rgba(128,128,128,.4); background: rgba(128,128,128,.08); color: inherit; }`; document.head.append(st); }
+  let closingForGood = false;
+  const finish = () => { S2S_ENDING = false; S2S_END_API = null; try { sessionStorage.setItem("s2s-end-done", "1"); } catch (e) {} const t = S2S_END_THEN; S2S_END_THEN = null; if (t) t(); };
+  const api = S2S_END_API = S2S_BOARD({ label: ovw ? "All pages" : "Before you go", sticky: true,
+    top: ovw ? "All pages. Rest on a page to see what you gave on it; “Go to this page” opens it." : "Before you go: what you gave, page by page. Rest on a page to see its questions, scores and notes and change them; then submit all.",
+    badge: (p) => tabs.map((t) => (t.badge ? t.badge(p) || "" : "")).join(""),
+    boxes: (p) => tabs.flatMap((t) => (t.boxes ? t.boxes(p) || [] : [])),
+    miss: (p) => tabs.some((t) => t.miss && t.miss(p)),
+    side(el, i, a) {
+      const P = a.pages[i], redraw = () => { a.refresh(); this.side(el, i, a); };
+      el.innerHTML = i >= 0 ? `<h3>${P.i + 1} · ${String(P.name).replace(/</g, "&lt;")}</h3>${ovw ? `<p><button type="button" class="fbbtn fbgo" data-goto="${i}">Go to this page ›</button></p>` : ""}` : `<h3>${ovw ? "All pages" : "Before you go"}</h3><p class="fbdim">Rest on a page on the board to see what you gave on it. A page framed in orange still wants something.</p>`;
+      const gt = el.querySelector("[data-goto]"); if (gt) gt.onclick = () => { closingForGood = true; a.close(); S2S_ENDING = false; S2S_OVERVIEW = false; S2S_END_API = null; go(i, 0); };
+      for (const t of tabs) { const sec = document.createElement("section"); sec.className = "s2ssec"; sec.innerHTML = `<h4>${t.label}</h4><div></div>`; el.append(sec); t.panel(sec.lastChild, i, redraw); }
+    },
+    foot(el, a) {
+      const why = tabs.map((t) => t.ready()).filter(Boolean);
+      el.innerHTML = `<span>${why.length ? why.join(" · ") : "Everything is ready to send"}</span><button type="button" class="fbbtn fbgo" ${why.length ? "disabled" : ""}>Submit all</button>`;
+      el.querySelector("button").onclick = async () => { const b = el.querySelector("button"); b.disabled = true; b.textContent = "Sending…";
+        let after = null; for (const t of tabs) { try { const r = await t.send(); if (typeof r === "function") after = r; } catch (e) {} }
+        closingForGood = true; a.close(); if (ovw) { S2S_ENDING = false; S2S_OVERVIEW = false; S2S_END_API = null; if (after) after(() => {}); return; } if (after) after(finish); else finish(); };
+    },
+    onclose() { S2S_END_API = null; if (closingForGood) return; if (ovw) { S2S_ENDING = false; S2S_OVERVIEW = false; return; } if (S2S_END_KEEP) { S2S_END_KEEP = false; S2S_ENDING = false; return; } finish(); } });
+  if (at != null && at >= 0) api.show(at);
+}
+// leaving the summary for a while (to draw a note's box on a page): the summary comes back after, at that page
+let S2S_END_KEEP = false;
+const s2sEndAway = () => { S2S_END_KEEP = true; if (S2S_END_API) S2S_END_API.close(); };
+let S2S_WRAPUP = s2sEnd;
+// Every way out (the owner, 2026-11-22: “离开这里要写成类似 you haven't finished all the user study yet … think aloud如果是空是
+// 允许离开的”): while the study's questions or scores are not all given and sent, or a note is written and not sent (no
+// note at all is fine), a tab closed or the browser left asks first. Its words are the browser's own (no page may set
+// them any more), so the page says ours too: once the reader stays, a box: you have not finished, finish before you leave; then the summary.
+const s2sLeftToDo = () => S2S_TABS.some((t) => { try { return !t.hidden && t.pending(); } catch (x) { return false; } });
+function s2sLeaveBox() {
+  if (S2S_ENDING || document.querySelector(".s2sleave")) return;
+  const study = s2sStudy(), d = document.createElement("div"); d.className = "s2sleave"; d.setAttribute("role", "alertdialog"); d.setAttribute("aria-modal", "true");
+  d.style.cssText = "position:fixed;inset:0;z-index:98;display:grid;place-items:center;background:rgba(10,12,16,.55)";
+  d.innerHTML = `<div style="width:min(520px,calc(100vw - 32px));box-sizing:border-box;background:var(--panel,#fffdf8);color:var(--ink,#1d2129);border:3px solid #ff8a5b;border-radius:14px;padding:22px;display:grid;gap:12px;font:18px/1.45 system-ui,sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.35)">
+    <h2 style="margin:0;font-size:24px">${study ? "You haven't finished the user study yet" : "Your notes are not sent yet"}</h2>
+    <p style="margin:0">${study ? "Please finish it before you leave: the questions and scores still to give are marked in the summary." : "Please send them before you leave, or delete them in the summary."}</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button type="button" data-k="go" style="font:600 17px system-ui,sans-serif;border:0;background:#ff8a5b;color:#1a1a1a;border-radius:8px;padding:9px 16px;cursor:pointer">Finish now</button></div></div>`;
+  document.body.append(d);
+  for (const ev of ["click", "pointerdown", "keydown"]) d.addEventListener(ev, (e) => e.stopPropagation());
+  d.querySelector('[data-k="go"]').onclick = () => { d.remove(); s2sEnd(() => {}); };
+  d.querySelector('[data-k="go"]').focus();
+}
+addEventListener("beforeunload", (e) => {
+  if (!s2sLeftToDo()) return; // (the kit's own browsers pass here only when the notes are asked for, ?feedback=1)
+  e.preventDefault(); e.returnValue = "You haven't finished the user study yet. Please finish it before you leave."; // (shown by older browsers only)
+  setTimeout(s2sLeaveBox, 400); // the reader stayed
+});
 let S2S_REMIND = () => {}; // says the notes not sent yet (set below; js/survey.js calls it after the last questions)
 let S2S_SURVEY = false;     // the user study's questions are on (js/survey.js): the last page's reminder waits for them
 // User study mode, set by the address alone (the owner, 2026-11-22: “user study不做成外面的开关了，做一个全局的，类似在地址栏
@@ -12760,7 +12856,10 @@ function s2sStudy() {
 .fbfoot { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: max(12px, env(safe-area-inset-top, 0px)); display: flex; gap: 10px; align-items: center; z-index: 2; font: 15px system-ui, sans-serif; color: var(--ink, #1d2129); }
 .fbfoot .fbbtn[disabled] { opacity: .45; cursor: not-allowed; } .fbfoot .fbgo { background: var(--accent, #7a5a12); border-color: var(--accent, #7a5a12); color: var(--bg, #fffdf8); font-weight: 600; }
 .fbtile .fbbadge { position: absolute; right: 8px; top: 8px; display: flex; gap: 6px; font: 600 22px system-ui, sans-serif; }
-.fbtile .fbbadge:empty { display: none; } .fbtile .fbbadge > span { color: #fff; background: rgba(20,24,30,.78); padding: 2px 9px; border-radius: 6px; }
+.fbtile .fbbadge:empty { display: none; }
+.fbtile .fbboxes { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: 1920 / 1080; pointer-events: none; }
+.fbtile .fbboxes i { position: absolute; border: 4px solid #ff8a5b; border-radius: 6px; box-shadow: 0 0 0 2px rgba(0,0,0,.25); }
+.fbtile .fbboxes b { position: absolute; left: -4px; top: -30px; font: 700 20px/1 system-ui, sans-serif; background: #ff8a5b; color: #1a1a1a; padding: 4px 8px; border-radius: 4px; } .fbtile .fbbadge > span { color: #fff; background: rgba(20,24,30,.78); padding: 2px 9px; border-radius: 6px; }
 .fbtile .fbbadge > span.fbwant { background: #ff8a5b; color: #1a1a1a; }
 .fbtile.fbmiss .fbpic { border-color: #ff8a5b; box-shadow: 0 0 0 5px #ff8a5b, 0 0 30px rgba(255,138,91,.7); animation: fbmiss 1.2s ease-in-out infinite alternate; }
 .fbd.fbmiss i { background: #ff8a5b; height: 12px; }
@@ -12874,7 +12973,7 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
     document.body.append(h);
     h.querySelector('[data-k="whole"]').onclick = () => openNote(null);
     h.querySelector('[data-k="done"]').onclick = () => stopSelect();
-    const b = h.querySelector('[data-k="back"]'); if (b) b.onclick = () => { stopSelect(); returnTo = null; openSummary(); };
+    const b = h.querySelector('[data-k="back"]'); if (b) b.onclick = () => { stopSelect(); const r = returnTo; returnTo = null; if (r === "end") s2sEnd(null, cur); else openSummary(); };
     sel.addEventListener("pointerdown", (e) => {
       const open = document.querySelector(".fbnote"); if (open) { const t = open.querySelector("textarea").value.trim(); if (t) open.querySelector('[data-k="save"]').click(); else closeNote(); }
       e.preventDefault(); start = pct(e); live = boxAt([start[0], start[1], 0, 0]); sel.setPointerCapture(e.pointerId);
@@ -12889,7 +12988,7 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
     Object.assign(n.style, { left: (r ? Math.min(r[0] + r[2] + 1, 70) : 36) + "vw", top: (r ? Math.min(r[1], 60) : 30) + "vh" });
     n.innerHTML = `<label class="fbmuted" for="fbtext">${r ? "What do you think here?" : "What do you think of this page?"}</label><textarea id="fbtext"></textarea><div class="fbrow"><button class="fbbtn" type="button" data-k="cancel">Cancel</button><button class="fbbtn fbprimary" type="button" data-k="save">Save note</button></div>`;
     document.body.append(n); n.querySelector("textarea").focus();
-    n.querySelector('[data-k="cancel"]').onclick = () => { closeNote(); if (returnTo === "summary") { returnTo = null; stopSelect(); openSummary(); } };
+    n.querySelector('[data-k="cancel"]').onclick = () => { closeNote(); if (returnTo === "end") { returnTo = null; stopSelect(); s2sEnd(null, cur); } else if (returnTo === "summary") { returnTo = null; stopSelect(); openSummary(); } };
     n.querySelector('[data-k="save"]').onclick = async () => {
       const t = n.querySelector("textarea").value.trim(); if (!t) { n.querySelector("textarea").focus(); return; }
       const note = { page: cur, step, rect: r, text: t, at: new Date().toISOString(), shot: null }; notes.push(note); closeNote(); count();
@@ -12897,7 +12996,7 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
       document.getElementById("fbsel")?.style.setProperty("visibility", "hidden"); document.querySelectorAll(".fbbox").forEach((b) => b.style.visibility = "hidden");
       note.shot = await snap(); store();
       document.getElementById("fbsel")?.style.removeProperty("visibility"); document.querySelectorAll(".fbbox").forEach((b) => b.style.visibility = "");
-      if (returnTo === "summary") { returnTo = null; stopSelect(); openSummary(); return; }
+      if (returnTo === "end") { returnTo = null; stopSelect(); s2sEnd(null, cur); } else if (returnTo === "summary") { returnTo = null; stopSelect(); openSummary(); return; }
       showBoxes();
     };
   }
@@ -12921,7 +13020,9 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
       L.querySelectorAll("[data-redo]").forEach((b) => b.onclick = () => { const n = notes.splice(+b.dataset.redo, 1)[0]; count(); S.remove(); go(n.page, n.step || 0); returnTo = "summary"; startSelect(); });
     };
     render();
-    S.querySelector('[data-k="back"]').onclick = () => S.remove();
+    const closeSum = () => { S.remove(); const d = sumDone; sumDone = null; if (d) d(); };
+    S.querySelector('[data-k="back"]').onclick = closeSum;
+    if (sumDone) S.querySelector('[data-k="back"]').textContent = "Done ›";
     S.querySelector('[data-k="add"]').onclick = () => dialog(`<h3 style="margin:0">Add a note</h3><p style="margin:0">A note on the whole simulation, or one from a page?</p><div class="fbrow"><button class="fbbtn" type="button" data-k="text">For the whole simulation</button><button class="fbbtn fbprimary" type="button" data-k="page">Choose from a page</button></div>`, (d, close) => {
       d.querySelector('[data-k="text"]').onclick = () => { close(); notes.push({ page: null, rect: null, text: "", at: new Date().toISOString(), shot: null }); count(); render(); L.querySelector(`#fbt${notes.length - 1}`)?.focus(); };
       d.querySelector('[data-k="page"]').onclick = () => { close(); openBoard((i) => { S.remove(); go(i, 0); returnTo = "summary"; startSelect(); }); };
@@ -12929,6 +13030,9 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
     S.querySelector('[data-k="submit"]').onclick = () => submit(S, L);
   }
   mine.onclick = openSummary;
+  // the overview: the bar's button after → (deck.html, #overview), and the key O
+  { const ob = document.getElementById("overview"); if (ob) { ob.hidden = false; ob.addEventListener("click", (e) => { e.stopPropagation(); s2sOverview(); }); } }
+  addEventListener("keydown", (e) => { if ((e.key === "o" || e.key === "O") && !e.metaKey && !e.ctrlKey && !e.altKey && !(e.target.matches && e.target.matches("input, textarea, select")) && !document.querySelector(".fbov, .fbsum, .svcard, .aucard, .aucert, .auintro, .fbcard, #s2suser, .s2sleave")) { e.preventDefault(); s2sOverview(); } });
   function dialog(html, wire) { const d = document.createElement("div"); d.className = "fbdlg"; d.innerHTML = `<div role="dialog" aria-modal="true">${html}</div>`; document.body.append(d); wire(d, () => d.remove()); d.addEventListener("click", (e) => { if (e.target === d) d.remove(); }); }
   // the picture as sent: the window as it was, its box drawn on it (orange, the note's number at its corner), so the
   // sheet's picture shows what the note is about; the box's place is sent as numbers too
@@ -12953,7 +13057,7 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
     dialog(`<p style="margin:0">Sending ${sent.length} note${sent.length === 1 ? "" : "s"}…</p>`, () => {});
     const { ok, why } = await s2sPost(payload);
     document.querySelectorAll(".fbdlg").forEach((d) => d.remove());
-    if (ok) { notes = []; count(); S.remove(); dialog(`<h3 style="margin:0">Thank you</h3><p style="margin:0">Your ${sent.length} note${sent.length === 1 ? " was" : "s were"} sent to the Sense2Sim team.</p><div class="fbrow"><button class="fbbtn fbprimary" type="button">Close</button></div>`, (d, c) => { d.querySelector("button").onclick = c; }); }
+    if (ok) { notes = []; count(); S.remove(); { const dn = sumDone; sumDone = null; if (dn) setTimeout(dn, 1600); } dialog(`<h3 style="margin:0">Thank you</h3><p style="margin:0">Your ${sent.length} note${sent.length === 1 ? " was" : "s were"} sent to the Sense2Sim team.</p><div class="fbrow"><button class="fbbtn fbprimary" type="button">Close</button></div>`, (d, c) => { d.querySelector("button").onclick = c; }); }
     else dialog(`<h3 style="margin:0">Not sent</h3><p style="margin:0">The notes could not be sent (${fbEsc(why || "no answer")}). They are still here: try again in a moment.</p><div class="fbrow"><button class="fbbtn fbprimary" type="button">Close</button></div>`, (d, c) => { d.querySelector("button").onclick = c; });
   }
   // notes not sent yet: said when the reader is about to leave (and stays), and at the last page (after the user
@@ -12966,7 +13070,36 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
   };
   S2S_REMIND = remind;
   S2S_BOARD = (o) => openBoard(null, o);
-  addEventListener("beforeunload", (e) => { if (!notes.length) return; e.preventDefault(); e.returnValue = ""; setTimeout(remind, 600); });
+  // the Notes tab of the end's summary (S2S_TABS, above): the notes, even none, to add to, change and send
+  let sumDone = null;
+  // the notes in the end's summary (s2sEnd): on each page's tile their boxes and their count; beside it, the page's
+  // notes to change or delete, a box to draw on the page (the summary comes back after), a note on the whole page;
+  // with no page picked, the notes on the whole simulation. Sent with everything else, those with words.
+  async function sendNotes() {
+    const P = pages(), sent = notes.filter((n) => (n.text || "").trim()); if (!sent.length) return;
+    const shots = await Promise.all(sent.map((n) => marked(n.shot, n.rect, notes.indexOf(n) + 1)));
+    const { ok } = await s2sPost({ site, ...s2sWhere(), version: s2sKit(), user: s2sUser(), reader: s2sReader(), ua: navigator.userAgent,
+      notes: sent.map((n) => ({ n: notes.indexOf(n) + 1, page: n.page != null ? P[n.page].name : "The whole simulation", pageId: n.page != null ? P[n.page].id : "", step: n.step ?? "", box: n.rect ? n.rect.map((v) => +v.toFixed(1)) : null, text: n.text.trim(), at: n.at || "", shot: shots[sent.indexOf(n)] || "" })) });
+    if (ok) { notes = []; count(); store(); }
+  }
+  S2S_TABS.push({ key: "notes", label: "Think-aloud notes", pending: () => notes.some((n) => (n.text || "").trim()), // (no note, or only empty ones: nothing to send)
+   
+    badge: (p) => { const n = notes.filter((x) => x.page === p.i).length; return n ? `<span>✎ ${n}</span>` : ""; },
+    boxes: (p) => notes.filter((x) => x.page === p.i && x.rect).map((x) => ({ rect: x.rect, n: notes.indexOf(x) + 1 })),
+    ready: () => "",
+    send: sendNotes,
+    panel(el, i, redraw) {
+      const mine = notes.map((n, k) => [n, k]).filter(([n]) => (i >= 0 ? n.page === i : n.page == null));
+      el.innerHTML = (mine.length ? mine.map(([n, k]) => `<div class="s2snote"><span class="fbdim">Note ${k + 1}${n.rect ? ", a box on the page" : i >= 0 ? ", the whole page" : ""}</span><textarea data-k="${k}" placeholder="Your note">${fbEsc(n.text || "")}</textarea><div class="fbrow">${n.page != null ? `<button type="button" class="fbbtn" data-redo="${k}">Draw its box again</button>` : ""}<button type="button" class="fbbtn fbdanger" data-del="${k}">Delete</button></div></div>`).join("") : `<p class="fbdim">${i >= 0 ? "No note on this page." : "No note on the whole simulation."}</p>`)
+        + `<div class="fbrow">${i >= 0 ? `<button type="button" class="fbbtn" data-x="box">✎ Draw a box on this page</button><button type="button" class="fbbtn" data-x="whole">+ A note on the whole page</button>` : `<button type="button" class="fbbtn" data-x="sim">+ A note on the whole simulation</button>`}</div>`;
+      el.querySelectorAll("textarea").forEach((t) => t.addEventListener("input", () => { notes[+t.dataset.k].text = t.value; store(); }));
+      el.querySelectorAll("[data-del]").forEach((b) => b.onclick = () => { notes.splice(+b.dataset.del, 1); count(); store(); redraw(); });
+      const away = (pg, step) => { s2sEndAway(); go(pg, step || 0); returnTo = "end"; startSelect(); };
+      el.querySelectorAll("[data-redo]").forEach((b) => b.onclick = () => { const n = notes.splice(+b.dataset.redo, 1)[0]; count(); store(); away(n.page, n.step); });
+      const bx = el.querySelector('[data-x="box"]'); if (bx) bx.onclick = () => away(i, 0);
+      const wh = el.querySelector('[data-x="whole"]'), sm = el.querySelector('[data-x="sim"]');
+      for (const b of [wh, sm]) if (b) b.onclick = () => { notes.push({ page: i >= 0 ? i : null, rect: null, text: "", at: new Date().toISOString(), shot: null }); count(); store(); redraw(); const t = el.querySelectorAll("textarea"); if (t.length) t[t.length - 1].focus(); };
+    } });
   let lastT = 0; const goF = go;
   go = function (i, s) { if (i !== cur && nudgeCard()) return; goF(i, s); clearTimeout(lastT); if (cur === slides.length - 1 && !S2S_SURVEY) lastT = setTimeout(() => { if (cur === slides.length - 1) remind(); }, 3000); };
   // the board of all the pages
@@ -12983,15 +13116,19 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
     ov.querySelector('[data-k="close"]').onclick = () => closeBoard();
     const B = board(ov.querySelector(".fbboard"), ov.querySelector(".fbsheet"));
     // a review: a tile looked at stays (its panel beside the board is worked in); a pick: the tile's page opens
-    let at = -1, pinned = false; // pinned: a tile clicked stays in the panel while the pointer crosses others on its way there
+    // a page rested on (hover) is shown beside the board after a short dwell, so a pointer crossing other tiles on its way
+    // to the panel changes nothing; a click shows it at once; the pointer in the panel holds it (the owner, 2026-11-22: “hover到”)
+    let at = -1, inSide = false, dwellT = 0;
     const side = ov.querySelector(".fbside"), foot = ov.querySelector(".fbfoot");
-    const api = { pages: P, close: () => closeBoard(), show: (i) => { pinned = true; look(i); B.show(i); },
-      refresh() { if (!o) return; for (const t of ov.querySelectorAll(".fbtile")) { const p = P[+t.dataset.p]; t.querySelector(".fbbadge").innerHTML = o.badge ? o.badge(p) || "" : ""; t.classList.toggle("fbmiss", !!(o.miss && o.miss(p))); }
+    const api = { pages: P, close: () => closeBoard(), show: (i) => { clearTimeout(dwellT); look(i); B.show(i); },
+      refresh() { if (!o) return; for (const t of ov.querySelectorAll(".fbtile")) { const p = P[+t.dataset.p]; t.querySelector(".fbbadge").innerHTML = o.badge ? o.badge(p) || "" : "";
+          { let bx = t.querySelector(".fbboxes"); if (!bx) { bx = document.createElement("span"); bx.className = "fbboxes"; t.append(bx); } bx.innerHTML = (o.boxes ? o.boxes(p) || [] : []).map((b) => `<i style="left:${b.rect[0]}%;top:${b.rect[1]}%;width:${b.rect[2]}%;height:${b.rect[3]}%"><b>${b.n}</b></i>`).join(""); } t.classList.toggle("fbmiss", !!(o.miss && o.miss(p))); }
         for (const d of ov.querySelectorAll(".fbd")) d.classList.toggle("fbmiss", !!(o.miss && o.miss(P[+d.dataset.i]))); if (foot && o.foot) o.foot(foot, api); } };
     const look = (i) => { if (!o || i === at) return; at = i; if (side && o.side) o.side(side, i, api); };
     ov.querySelectorAll(".fbtile").forEach((b) => b.onclick = () => { if (o) return api.show(+b.dataset.p); closeBoard(); pick(+b.dataset.p); });
-    ov.querySelectorAll(".fbd").forEach((d) => { d.addEventListener("pointerenter", () => { B.show(+d.dataset.i); if (o && !pinned) look(+d.dataset.i); }); d.addEventListener("focus", () => B.show(+d.dataset.i)); d.onclick = () => { if (o) return api.show(+d.dataset.i); closeBoard(); pick(+d.dataset.i); }; });
-    B.onfocus = (i) => { ov.querySelectorAll(".fbd").forEach((d) => d.classList.toggle("fbon", +d.dataset.i === i)); if (o && !pinned && i != null && i >= 0) look(i); };
+    ov.querySelectorAll(".fbd").forEach((d) => { d.addEventListener("pointerenter", () => { B.show(+d.dataset.i); if (o) { clearTimeout(dwellT); look(+d.dataset.i); } }); d.addEventListener("focus", () => B.show(+d.dataset.i)); d.onclick = () => { if (o) return api.show(+d.dataset.i); closeBoard(); pick(+d.dataset.i); }; });
+    B.onfocus = (i) => { ov.querySelectorAll(".fbd").forEach((d) => d.classList.toggle("fbon", +d.dataset.i === i)); if (o && !inSide && i != null && i >= 0) { clearTimeout(dwellT); dwellT = setTimeout(() => { if (!inSide) look(i); }, 280); } };
+    if (side) { side.addEventListener("pointerenter", () => { inSide = true; clearTimeout(dwellT); }); side.addEventListener("pointerleave", () => { inSide = false; }); }
     if (o) { for (const el of [side, foot]) if (el) for (const ev of ["click", "pointerdown", "keydown"]) el.addEventListener(ev, (e) => e.stopPropagation()); if (side && o.side) o.side(side, -1, api); api.refresh(); }
     return api;
   }
@@ -13098,6 +13235,7 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
 /* this page's scores as the authors gave them, for every reader (not in the study): a small mark beside the medal,
    its number the page's mean; pointed at, it opens to the right into two bars, Accurate and Quality */
 .aupg { position: fixed; left: calc(max(14px, env(safe-area-inset-left, 0px)) + 52px); bottom: calc(70px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; align-items: center; gap: 0; height: 32px; padding: 0 11px; border: 0; border-radius: 999px; background: #1d2129; color: #f3eee5; font: 600 16px system-ui, sans-serif; cursor: default; overflow: hidden; max-width: 64px; transition: max-width .35s ease, padding .35s ease; white-space: nowrap; }
+.aupg[hidden] { display: none; } /* (its display: flex would otherwise keep a hidden one drawn, over the pill's first letters) */
 .aupg:hover, .aupg:focus-visible { max-width: 460px; } .aupg > b { flex: none; min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
 .aupg .aupgb { display: flex; align-items: center; gap: 6px; margin-left: 10px; font: 500 13px system-ui, sans-serif; opacity: 0; transition: opacity .25s .1s; }
 .aupg:hover .aupgb, .aupg:focus-visible .aupgb { opacity: 1; }
@@ -13353,10 +13491,10 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
     document.body.append(card); paint();
     card.querySelectorAll(".ausc button").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const all0 = rated() === N; scores[id] = Object.assign({}, scores[id], { [b.dataset.k]: b.dataset.v === "na" ? "na" : +b.dataset.v, at: new Date().toISOString() }); keep();
       // (nothing is sent as a page is scored: the scores are looked over, then sent whole, openReview)
-      if (!all0 && rated() === N) { closeCard(); openReview(); return; } // every page rated: the scores to look over, then the certificate
+      if (!all0 && rated() === N) { closeCard(); S2S_WRAPUP(() => {}); return; } // every page rated: the scores to look over, then the certificate
       const r = resume; openCard(r); });
     card.querySelector('[data-x="how"]').onclick = (e) => { e.stopPropagation(); intro(); };
-    const nx = card.querySelector('[data-x="next"]'); if (nx) nx.onclick = (e) => { e.stopPropagation(); const r = resume; closeCard(); if (lastOne && rated() === N) openReview(); else if (r) r(); };
+    const nx = card.querySelector('[data-x="next"]'); if (nx) nx.onclick = (e) => { e.stopPropagation(); const r = resume; closeCard(); if (lastOne && rated() === N) S2S_WRAPUP(() => {}); else if (r) r(); };
     card.addEventListener("click", (e) => e.stopPropagation()); card.addEventListener("pointerdown", (e) => e.stopPropagation());
   }
   function closeCard() { if (card) card.remove(); card = null; resume = null; paint(); }
@@ -13364,7 +13502,7 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
   addEventListener("pointermove", sealWake, { passive: true }); sealWake();
   pill.onclick = (e) => { e.stopPropagation(); openCard(null); };
   // the medal: the certificate once every page is rated (or the authors' scores came with the simulation); before, this page's card
-  seal.onclick = (e) => { e.stopPropagation(); if (!on()) { if (!s2sStudy()) openCert(); } else if (rated() === rateable().length) openReview(); else if (card) closeCard(); else openCard(null); };
+  seal.onclick = (e) => { e.stopPropagation(); if (!on()) { if (!s2sStudy()) openCert(); } else if (rated() === rateable().length) { if (sentAt) openCert(); /* sent: the certificate itself */ else S2S_WRAPUP(() => {}); } else if (card) closeCard(); else openCard(null); };
   // a press outside the card closes it, and only that: the page does not go on. A way on to a later page (→, the next
   // page's button, a page further on the bar) while this page's scores are not both given shakes the card instead, as
   // the intro does (the owner, 2026-11-21: “点别处还是一样关掉，只有和下一页有关的操作才强调”)
@@ -13431,12 +13569,13 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
   // all the pages (js/feedback.js, S2S_BOARD), each page's two scores on its tile, a page not scored framed and
   // pulsing; the page looked at has its scores beside the board, to give or change; with every page scored,
   // “Confirm and sign” opens the certificate, which sends them.
+  let revBoard = null;
   function openReview(then) {
     closeCard(); closeCert();
     if (typeof S2S_BOARD !== "function") { openCert(); return; }
     const R = rateable(), has = (i) => R.some((p) => p.i === i), fmt = (v) => (v === "na" ? "N/A" : v || "–"), left = () => R.filter((p) => !done(p.id)).length;
     let went = false;
-    const api = S2S_BOARD({ label: "Your scores, before they are sent",
+    const api = revBoard = S2S_BOARD({ label: "Your scores, before they are sent",
       top: "Your scores, before they are sent. Rest on a page to see it; click it to give or change its scores. A page framed in orange is not scored yet.",
       badge: (p) => (!has(p.i) ? "" : done(p.id) ? `<span>A ${fmt(scores[p.id].a)}</span><span>Q ${fmt(scores[p.id].q)}</span>` : `<span class="fbwant">not scored</span>`),
       miss: (p) => has(p.i) && !done(p.id),
@@ -13453,8 +13592,8 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
         el.querySelector('[data-x="open"]').onclick = () => { went = true; api.close(); go(i, 0); };
       },
       foot(el, api) { const n = left(); el.innerHTML = `<span>${n ? `${n} of ${R.length} pages not scored` : `All ${R.length} pages scored`}</span><button type="button" class="fbbtn fbgo" ${n ? "disabled" : ""}>Confirm and sign →</button>`;
-        el.querySelector("button").onclick = () => { went = true; api.close(); openCert(); }; },
-      onclose() { if (!went && then) then(); } });
+        el.querySelector("button").onclick = () => { went = true; api.close(); openCert(then); }; }, // (signed and sent, “Continue →” goes where the reader was going)
+      onclose() { revBoard = null; if (!went && then) then(); } });
     const first = R.find((p) => !done(p.id)); if (first) api.show(first.i);
   }
   function openCert(then) {
@@ -13490,8 +13629,27 @@ const AU_FONT = (typeof document !== "undefined" && getComputedStyle(document.do
     btn.textContent = ok ? "Sent ✓ Thank you" : `Not sent (${why || "no answer"}): try again`; btn.disabled = ok;
     if (ok) { sentAt = new Date().toISOString(); keep(); }
   }
-  AU_REVIEW = (then) => { if (!on() || sentAt || !Object.keys(scores).length) return then && then(); openReview(then); };
-  addEventListener("beforeunload", (e) => { if (on() && !sentAt && Object.keys(scores).length) { e.preventDefault(); e.returnValue = ""; } }); // scores given and not sent
+  AU_REVIEW = (then) => S2S_WRAPUP(then); // (every page scored: the end's summary, js/feedback.js) // (an author who scored nothing yet is shown every page to score)
+  // the Scores tab of the end's summary (js/feedback.js, S2S_TABS): an author's alone
+  // the scores in the end's summary (js/feedback.js, s2sEnd): an author's alone. On each tile the page's two scores
+  // (or “not scored”, framed); beside it, the page's scores to give or change; with no page picked, how many are left
+  // and the name signed. Sent with everything else, once every page is scored; then the certificate.
+  S2S_TABS.push({ key: "scores", label: "Scores", pending: () => on() && !sentAt, get hidden() { return !on(); },
+    badge: (p) => { const R = rateable(); if (!R.some((r) => r.i === p.i)) return ""; const s = scores[p.id] || {}, f = (v) => (v === "na" ? "N/A" : v || "–"); return done(p.id) ? `<span>A ${f(s.a)}</span><span>Q ${f(s.q)}</span>` : `<span class="fbwant">not scored</span>`; },
+    miss: (p) => rateable().some((r) => r.i === p.i) && !done(p.id),
+    ready: () => { const n = rateable().filter((p) => !done(p.id)).length; return n ? `${n} page${n > 1 ? "s" : ""} not scored` : ""; },
+    alone: (then) => (on() && !sentAt ? openCert(then) : then && then()),
+    send: async () => { if (!w8()) return; if (!signer) signer = s2sUser(); const r = await s2sPost(post("certificate", rateable())); if (r.ok) { sentAt = new Date().toISOString(); keep(); } return (then) => openCert(then); },
+    panel(el, i, redraw) {
+      const P = allPages(), R = rateable();
+      if (i < 0) { const n = R.filter((p) => !done(p.id)).length; el.innerHTML = `<p>${n ? `<b>${n} of ${R.length} pages not scored</b>: framed in orange on the board.` : `All ${R.length} pages scored.`}</p><label class="fbdim" for="s2ssign">Your name, as it shows on the certificate</label><input id="s2ssign" class="s2sname" value="${esc(signer || s2sUser())}">`;
+        el.querySelector("#s2ssign").addEventListener("change", (e) => { signer = e.target.value.trim(); keep(); }); return; }
+      if (!R.some((r) => r.i === i)) { el.innerHTML = `<p class="fbdim">This page has none of the paper's content: it takes no scores.</p>`; return; }
+      const id = P[i].id, s = scores[id] || {}, scale = (k) => ["na", 1, 2, 3, 4, 5].map((v) => `<button type="button" data-k="${k}" data-v="${v}" class="${s[k] === v ? "auon" : ""}${v === "na" ? " auna" : ""}" aria-pressed="${s[k] === v}">${v === "na" ? "N/A" : v}</button>`).join("");
+      el.innerHTML = `<div class="aum aua"><div class="aulab"><b>Accurate</b><span>Does this page say what the paper says?</span></div><div class="ausc">${scale("a")}</div></div><div class="aum auq"><div class="aulab"><b>Quality</b><span>Is it clear and well made?</span></div><div class="ausc">${scale("q")}</div></div>`;
+      el.querySelectorAll(".ausc button").forEach((b) => b.onclick = () => { scores[id] = Object.assign({}, scores[id], { [b.dataset.k]: b.dataset.v === "na" ? "na" : +b.dataset.v, at: new Date().toISOString() }); keep(); paint(); redraw(); });
+    } });
+  const w8 = () => on();
   // the reader picked or changed: the pill and the seal follow; another reader's name: that reader's scores
   addEventListener("click", () => setTimeout(paint, 0), true);
   addEventListener("s2s-user", () => { if (card) closeCard(); load(); introShown = false; sealKey = ""; paint(); });
@@ -13641,8 +13799,9 @@ const SURVEY = [
   const payload = (k) => { const S = SURVEY.find((x) => x.key === k), d = done[k];
     return { kind: "survey", site, ...s2sWhere(), version: s2sKit(), user: s2sUser(), reader: s2sReader(), ua: navigator.userAgent, section: S.title, at: d.at,
       answers: [...d.r.map((x) => ({ q: `${S.title} · ${x.q}`, a: x.a === "na" ? "N/A" : +x.a })), ...(S.picks ? [{ q: `${S.title} · Studies tried`, a: (d.picks || []).map((p) => (p === "Other" && d.other ? `Other: ${d.other}` : p)).join("; ") }] : []), { q: `${S.title} · Feedback`, a: d.text || "" }] }; };
-  function review(then) {
-    if (typeof S2S_BOARD !== "function" || !unsent().length) { if (typeof S2S_BOARD !== "function") for (const k of unsent()) { send(payload(k)); done[k].sent = new Date().toISOString(); keep(); } return then && then(); }
+  let revApi = null;
+  function review(then, force) {
+    if (typeof S2S_BOARD !== "function" || (!force && !unsent().length)) { if (typeof S2S_BOARD !== "function") for (const k of unsent()) { send(payload(k)); done[k].sent = new Date().toISOString(); keep(); } return then && then(); }
     let pickK = "", sending = false;
     const K = setsNow(), title = (k) => SURVEY.find((x) => x.key === k).title, missing = () => K.filter((k) => !done[k]);
     const show = (el, k, api) => {
@@ -13656,7 +13815,7 @@ const SURVEY = [
       el.querySelectorAll(".svrk").forEach((b) => b.onclick = () => { pickK = b.dataset.k; show(el, pickK, api); });
       const ed = el.querySelector('[data-x="edit"]'); if (ed) ed.onclick = () => ask(k, () => { api.refresh(); show(el, k, api); });
     };
-    S2S_BOARD({ label: "Your answers, before they are sent",
+    revApi = S2S_BOARD({ label: "Your answers, before they are sent",
       top: "Your answers, before they are sent. Click a page to see the questions of its part, and change an answer if you like.",
       badge: (p) => { const k = partOf(slides[p.i]); return !k || !applies(k) ? "" : done[k] ? `<span>${esc(title(k))} ✓</span>` : `<span class="fbwant">${esc(title(k))}: not answered</span>`; },
       miss: (p) => { const k = partOf(slides[p.i]); return !!k && applies(k) && !done[k]; },
@@ -13665,12 +13824,29 @@ const SURVEY = [
         el.innerHTML = `<span>${m.length ? `${m.length} set${m.length > 1 ? "s" : ""} not answered` : u.length ? `${K.length} sets answered` : "Sent ✓ Thank you"}</span><button type="button" class="fbbtn fbgo" ${m.length || !u.length || sending ? "disabled" : ""}>Submit my answers</button>`;
         el.querySelector("button").onclick = async () => { sending = true; api.refresh();
           for (const k of unsent()) { send(payload(k)); done[k].sent = new Date().toISOString(); } keep(); sending = false; api.refresh(); setTimeout(() => api.close(), 900); }; },
-      onclose() { if (then) then(); } });
+      onclose() { revApi = null; if (then) then(); } });
   }
+  // the questions in the end's summary (js/feedback.js, s2sEnd): a page's part's set beside it, its answers, and the way
+  // to change them; with no page picked, the sets that belong to no page (Research Inspiration, Overall) and how many
+  // are left. Sent with everything else, once every set that applies is answered.
+  const titleOf = (k) => SURVEY.find((x) => x.key === k).title;
+  const setPanel = (k, redraw) => { const S = SURVEY.find((x) => x.key === k), d = done[k];
+    return { html: `<p><b>${esc(S.title)}</b> ${d ? "✓" : `<span style="color:#d0562a">· not answered</span>`}</p>${d ? `<dl class="svra">${d.r.map((x) => `<div><dt>${esc(x.q)}</dt><dd>${x.a === "na" ? "N/A" : esc(x.a) + " / 5"}</dd></div>`).join("")}</dl>${S.picks ? `<p class="fbdim">Studies tried: ${esc((d.picks || []).join("; ") || "–")}</p>` : ""}<p class="fbdim">Feedback: ${d.text ? esc(d.text) : "(none)"}</p>` : ""}<p><button type="button" class="fbbtn" data-ask="${k}">${d ? "Change these answers" : "Answer now"}</button></p>`,
+      wire: (el) => { const b = el.querySelector(`[data-ask="${k}"]`); if (b) b.onclick = () => ask(k, redraw); } }; };
+  S2S_TABS.push({ key: "questions", label: "Questions", pending: () => setsNow().some((k) => !done[k] || !done[k].sent),
+    badge: (p) => { const k = partOf(slides[p.i]); return !k || !applies(k) ? "" : done[k] ? `<span>${esc(titleOf(k))} ✓</span>` : `<span class="fbwant">${esc(titleOf(k))}: not answered</span>`; },
+    miss: (p) => { const k = partOf(slides[p.i]); return !!k && applies(k) && !done[k]; },
+    ready: () => { const m = setsNow().filter((k) => !done[k]).length; return m ? `${m} set${m > 1 ? "s" : ""} of questions not answered` : ""; },
+    send: async () => { for (const k of unsent()) { send(payload(k)); done[k].sent = new Date().toISOString(); } keep(); },
+    alone: (then) => { for (const k of unsent()) { send(payload(k)); done[k].sent = new Date().toISOString(); } keep(); if (then) then(); },
+    panel(el, i, redraw) {
+      const ks = i >= 0 ? [partOf(slides[i])].filter((k) => k && applies(k)) : setsNow().filter((k) => k === "inspire" || k === "overall" || !done[k]);
+      if (!ks.length) { el.innerHTML = `<p class="fbdim">${i >= 0 ? "No questions on this page." : "Every set is answered."}</p>`; return; }
+      const parts = ks.map((k) => setPanel(k, redraw)); el.innerHTML = parts.map((x) => x.html).join(""); parts.forEach((x) => x.wire(el));
+    } });
   { const st = document.createElement("style"); st.textContent = `.svrl { display: flex; flex-wrap: wrap; gap: 6px; } .svrk { all: unset; cursor: pointer; font: 600 14px system-ui, sans-serif; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(128,128,128,.4); }
 .svrk.svon { background: #ff8a5b; border-color: #ff8a5b; color: #1a1a1a; } .svrk.svmiss { border-color: #ff8a5b; box-shadow: 0 0 0 2px rgba(255,138,91,.5); }
 .svra { margin: 0; display: grid; gap: 6px; } .svra > div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(128,128,128,.2); padding-bottom: 4px; } .svra dt { font-weight: 500; } .svra dd { margin: 0; font-weight: 700; white-space: nowrap; }`; document.head.append(st); }
-  addEventListener("beforeunload", (e) => { if (unsent().length) { e.preventDefault(); e.returnValue = ""; } }); // answers given and not sent
   // where each set comes, on the bar at the foot of the page (js/deck.js, #dots): after its page, an orange diamond,
   // hollow until answered; its sets named on pointing at it
   const mcss = document.createElement("style");
@@ -13725,7 +13901,7 @@ const SURVEY = [
   const ALL = ["intro", "sim", "universe", "world", "explore"];
   const finalKeys = () => ALL.concat(END);
   // the end: the answers looked over and sent, then the author's scores (js/author.js), then the notes (js/feedback.js)
-  const wrapUp = () => review(() => (typeof AU_REVIEW === "function" ? AU_REVIEW(() => S2S_REMIND()) : S2S_REMIND()));
+  const wrapUp = () => S2S_WRAPUP(() => {});
   // → at the end of a part: its questions first
   const fwd1 = forward;
   // the page that asks who the reader is: the pages after it wait for a kind picked (the owner, 2026-11-21: “即使没有选定，
@@ -13755,7 +13931,9 @@ const SURVEY = [
   // the reader says they are done exploring (the table's last question, js/table.js): Exploration first
   // with the Sensing Universe's and the Sensing World's, those the reader opened
   const atEnd = () => ["intro", "sim", ...LIT, "explore", ...END]; // every set not answered yet (chain keeps those wanted)
-  for (const b of document.querySelectorAll('[data-end="done"]')) b.addEventListener("click", (e) => { if (open || !atEnd().some(want)) return; e.stopImmediatePropagation(); e.preventDefault(); chain(atEnd(), () => review(() => b.click())); }, true);
+  // (every time: the sets still wanted, then the answers and the scores looked over; then the end goes on)
+  let ending = false;
+  for (const b of document.querySelectorAll('[data-end="done"]')) b.addEventListener("click", (e) => { if (open || ending) return; e.stopImmediatePropagation(); e.preventDefault(); chain(atEnd(), () => S2S_WRAPUP(() => { ending = true; try { b.click(); } finally { ending = false; } })); }, true);
   // the last page: the last questions, a moment after it opens
   let lastT = 0;
   const go1 = go;

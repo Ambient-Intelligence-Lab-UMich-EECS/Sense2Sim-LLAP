@@ -62,7 +62,8 @@
   // this simulation's paper (the opening of one simulation, Sense2Sim kit): the middle sheet of the first three, and its
   // star in the Universe, named and lit; window.S2S_PAPER = { title, short, g, i } set by the page
   var PAPER = window.S2S_PAPER || null;
-  if (PAPER && HEROES.length) { HEROES = HEROES.slice(); HEROES[0] = { g: PAPER.g, i: PAPER.i, title: PAPER.title }; }
+  var STAR = !!(PAPER && PAPER.g != null && PAPER.i != null); // its star, where the page knows which one it is
+  if (PAPER && HEROES.length) { HEROES = HEROES.slice(); HEROES[0] = { g: STAR ? PAPER.g : HEROES[0].g, i: STAR ? PAPER.i : HEROES[0].i, title: PAPER.title }; }
   var N = 0, OFF = [];
   COUNTS.forEach(function (n) { OFF.push(N); N += n; });
   // the sheets that carry a title ([paper, title]: a general, made-up one, no paper's own) and each paper's short name
@@ -785,7 +786,7 @@
     var nShow = la > 0.001 ? (W < 700 ? 6 : SLOTS) : 0, TURN = 3.6, shown = [];
     function meet(r1, r2) { return r1[0] < r2[2] && r2[0] < r1[2] && r1[1] < r2[3] && r2[1] < r1[3]; }
     starLabels.forEach(function (L, j) {
-      if (j === 0 && PAPER) { // this simulation's paper: its star named and lit while the Universe is shown, then in its box
+      if (j === 0 && PAPER && STAR) { // this simulation's paper: its star named and lit while the Universe is shown, then in its box
         var kP = OFF[PAPER.g] + PAPER.i, aP = Math.max(la, 0);
         var sxp = uniC[0] + S.pos[kP * 2] * uniS, syp = uniC[1] + S.pos[kP * 2 + 1] * uniS;
         if (L.k !== kP) { L.k = kP; L.el.textContent = (PAPER.short || "this paper") + " · this paper"; L.el.classList.add("me"); L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; }
@@ -858,6 +859,7 @@
 
   // ---------------------------------------------------------------- after the Universe page's story
   var HOWLIT = [0, 0, 0, 0, 0], howNodes = [].slice.call(document.querySelectorAll(".hnode")), flow = $("howflow"), wires = [], sparks = [];
+  var SC = (PAPER && PAPER.scores) || {}, medal3 = null, medalOn = false, MEDAL = [+SC.a || 0, +SC.q || 0];
   var capBadge = $("cap-badge"), capGo = $("cap-go"), howHead = document.querySelector(".howhead"), others = [].slice.call(document.querySelectorAll(".hnode:not(.gate) .htext, .hnode:not(.gate) .hmedia"));
   var LINKS_HOW = [[0, 1], [1, 2], [1, 3], [2, 4], [3, 4]]; // what feeds what (the paper; 1 Universe; 2 3D assets; 3 World; 4 the simulator)
   function layWires() {
@@ -895,19 +897,38 @@
     var ba = PAPER && PAPER.scored === false ? 0 : seg(P, BADGE[0], BADGE[1]) * (1 - seg(P, BADGE[2], GO[0]));
     var ga = seg(P, GO[0], GO[1]);
     show(capBadge, ba, 18); show(capGo, ga, 18);
+    // the medal grows to its scores each time the check comes into view
+    // (the simulator's own medal in 3-D, js/author.js: made afresh each time, so it spins in again; the numbers count up)
+    if (ba > 0.3 && !medalOn) { medalOn = true;
+      if (medal3) { medal3.stop(); medal3 = null; }
+      if (window.S2S_MEDAL3D && $("medal")) medal3 = window.S2S_MEDAL3D($("medal"), MEDAL[0], MEDAL[1], SC.who || "The paper's authors", SC.date || "");
+      var t0 = performance.now(); (function count(now) { var e = Math.min(1, (now - t0) / 1800), k = 1 - Math.pow(1 - e, 3); $("sa").textContent = (MEDAL[0] * k).toFixed(1); $("sq").textContent = (MEDAL[1] * k).toFixed(1); if (e < 1 && medalOn) requestAnimationFrame(count); })(t0); }
+    else if (ba < 0.05 && medalOn) { medalOn = false; }
     var dimA = Math.max(0.06, 1 - 1.25 * Math.max(ba, ga));
     canvas.style.opacity = dimA.toFixed(3); labels.style.opacity = dimA.toFixed(3); gates.style.filter = dimA < 0.999 ? "opacity(" + dimA.toFixed(3) + ")" : "";
   }
-  // the keys: → or Space, a stop on in the story; ←, back (the deck's own keys once the way in is reached)
-  var STOPS = [0, 0.12, 0.25, 0.4, 0.52, 0.64, 0.69, 0.73, 0.77, 0.81, 0.85, 0.9, 0.98];
-  function scrollToP(q) { var r = track.getBoundingClientRect(), len = r.height - H - (parseFloat(getComputedStyle(track).paddingTop) || 0); window.scrollTo({ top: Math.round(q * len), behavior: "smooth" }); }
+  // The stops (the owner, 2026-11-22: “每一页之间有严格一点的吸附感，现在很容易滑动到下一页”): the story rests only on these;
+  // →/Space or ← go one stop, and a scroll let go anywhere between stops is brought to the nearest one.
+  // (each of the five steps of how it works a stop of its own, where its node is fully lit: HOW, a fifth of it each)
+  var STOPS = [0, 0.13, 0.27, 0.42, 0.56, 0.655].concat([0, 1, 2, 3, 4].map(function (n) { return HOW[0] + (HOW[1] - HOW[0]) * (0.2 * n + 0.17); }), PAPER && PAPER.scored === false ? [] : [0.895], [0.98]);
+  // back from the simulator (its first page, its end's “Start from the beginning”: js/feedback.js, opening): #how, how it works whole
+  window.addEventListener("load", function () { if (location.hash === "#how") setTimeout(function () { stopAt = 5; window.scrollTo(0, Math.round(STOPS[5] * lenNow())); }, 60); });
+  var stopAt = 0, lockUntil = 0, snapT = 0;
+  function lenNow() { var r = track.getBoundingClientRect(); return r.height - H - (parseFloat(getComputedStyle(track).paddingTop) || 0); }
+  function goStop(i) { stopAt = clamp(i, 0, STOPS.length - 1); lockUntil = performance.now() + 900; window.scrollTo({ top: Math.round(STOPS[stopAt] * lenNow()), behavior: reduce ? "auto" : "smooth" }); }
+  function nearest() { var q = scrollTarget(), best = 0; STOPS.forEach(function (v, i) { if (Math.abs(v - q) < Math.abs(STOPS[best] - q)) best = i; }); return best; }
+  function step(dir) {
+    if (dir > 0 && stopAt === STOPS.length - 1) { var g = $("go"); if (g) g.click(); return; }
+    goStop(stopAt + dir);
+  }
+  // the wheel and a swipe scroll as on the Universe's own page (the owner, 2026-11-22: “调节成和线上universe一样的感觉”):
+  // free, eased by the scene; once the reader stops, the page settles on the nearest stop
+  window.addEventListener("scroll", function () { clearTimeout(snapT); snapT = setTimeout(function () { if (performance.now() < lockUntil) return; var i = nearest(); if (Math.abs(STOPS[i] - scrollTarget()) > 0.003) goStop(i); else stopAt = i; }, 600); }, { passive: true });
   window.addEventListener("keydown", function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var fwd = e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " " || e.key === "PageDown", back = e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp";
     if (!fwd && !back) return;
-    var q = scrollTarget(), i;
-    if (fwd) { for (i = 0; i < STOPS.length && STOPS[i] <= q + 0.004; i++); if (i < STOPS.length) { e.preventDefault(); scrollToP(STOPS[i]); } else { e.preventDefault(); var g = $("go"); if (g) g.click(); } }
-    else { for (i = STOPS.length - 1; i >= 0 && STOPS[i] >= q - 0.004; i--); if (i >= 0) { e.preventDefault(); scrollToP(STOPS[i]); } }
+    e.preventDefault(); if (performance.now() < lockUntil) return; stopAt = nearest(); step(fwd ? 1 : -1);
   });
 
   try {

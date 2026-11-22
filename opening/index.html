@@ -4,9 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- the tab's icon: the SVG where a browser takes one, the picture (made from it by make-icon.mjs) elsewhere -->
-<link rel="icon" href="favicon.png" sizes="32x32" type="image/png">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' gradientUnits='userSpaceOnUse' x1='14' y1='10' x2='50' y2='54'%3E%3Cstop offset='0' stop-color='#d9f272'/%3E%3Cstop offset='.38' stop-color='#6b98ff'/%3E%3Cstop offset='.68' stop-color='#c7a2ff'/%3E%3Cstop offset='1' stop-color='#ff8a5b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='#0d0f13'/%3E%3Cpath d='M44 21C44 9.5 20 9.5 20 22C20 34 44 30 44 42C44 54.5 20 54.5 20 43' fill='none' stroke='url%28#g%29' stroke-width='8.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <!-- page:begin -->
 <title>Sense2Sim · LLAP</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -79,7 +77,7 @@ a:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; border-ra
 .madeby { margin: 28px auto 0; max-width: 70ch; text-align: center; color: var(--ink-3); font-size: clamp(12.5px, 1.05vw, 17px); line-height: 1.4; }
 
 /* with the scene: the stage pinned, the page's length is the story's */
-.live .track { height: 1500vh; }
+.live .track { height: 3000vh; }
 .live .stage { position: sticky; top: var(--navh); height: calc(100vh - var(--navh)); height: calc(100dvh - var(--navh)); padding: 0; overflow: hidden; }
 .live #gl { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
 .live #labels { display: block; position: absolute; inset: 0; pointer-events: none; }
@@ -102,11 +100,11 @@ a:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; border-ra
 
 /* ---- the opening of one simulation: how it works, the authors' check, the way in (Sense2Sim kit, opening mock) */
 .navgo { color: var(--ink) !important; font-weight: 600; }
-.cap .thispaper { margin-top: 18px; max-width: 60ch; font-size: clamp(16px, min(1.5vw, 2.6vh), 22px); color: var(--ink-2); }
+.cap .thispaper { margin-top: 20px; max-width: 60ch; font-size: clamp(18px, min(1.9vw, 3.2vh), 30px); color: var(--ink-2); }
 .cap .thispaper b { color: var(--acoustic); font-weight: 600; }
 .how .howhead { text-align: center; margin: 0 auto clamp(10px, 2.4vh, 28px); padding: 0 var(--gutter-r) 0 var(--gutter-l); }
-.how .howeye { margin: 0; font: 600 clamp(13px, 1vw, 16px)/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
-.how .howhead h2 { margin: 10px 0 0; font-weight: 600; letter-spacing: -0.03em; font-size: clamp(26px, min(3.2vw, 5vh), 52px); line-height: 1.1;
+.how .howeye { margin: 0; font: 600 clamp(14px, 1.2vw, 19px)/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+.how .howhead h2 { margin: 10px 0 0; font-weight: 600; letter-spacing: -0.03em; font-size: clamp(30px, min(4.2vw, 6.6vh), 68px); line-height: 1.08;
   background: linear-gradient(180deg, #ffffff 30%, #b9bcc6 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .howgrid { position: relative; display: grid; width: min(1560px, 100%); margin: 0 auto; gap: clamp(12px, 1.6vw, 26px) clamp(18px, 3vw, 54px);
   grid-template-columns: 0.72fr 1.15fr 1fr 1.1fr; grid-template-rows: auto auto; grid-template-areas: "paper uni assets sim" "paper uni world sim"; align-items: center; }
@@ -114,42 +112,61 @@ a:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; border-ra
 .hnode { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; transition: opacity .5s ease, filter .5s ease; }
 .hnode[data-n="0"] { grid-area: paper; } #gate-uni { grid-area: uni; } #node-assets { grid-area: assets; } #gate-world { grid-area: world; } #node-sim { grid-area: sim; }
 .how .gate-media, .hmedia { display: block; position: relative; overflow: hidden; width: 100%; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.02); }
-#gate-uni .gate-media { aspect-ratio: 4 / 5; max-height: 52vh; }
-#node-assets .hmedia, #gate-world .gate-media { aspect-ratio: 16 / 9; max-height: 22vh; }
-.hsim .hmedia { aspect-ratio: 16 / 10; max-height: 34vh; }
+#gate-uni .gate-media { aspect-ratio: 4 / 5; max-height: 44vh; }
+#node-assets .hmedia, #gate-world .gate-media { aspect-ratio: 16 / 9; max-height: 18vh; }
+.hsim .hmedia { aspect-ratio: 16 / 10; max-height: 30vh; }
 .hpaper .hmedia { aspect-ratio: 0.773; max-height: 30vh; background: #f8f8f4; border-color: transparent; }
 .hsheet { position: absolute; inset: 9% 10%; display: flex; flex-direction: column; gap: 6px; }
 .hsheet b { color: #16181c; font: 700 clamp(10px, .82vw, 14px)/1.2 "Helvetica Neue", Helvetica, Arial, sans-serif; text-align: center; margin-bottom: 8px; }
 .hsheet i { display: block; height: 5px; border-radius: 2px; background: #c9cbd0; } .hsheet i:nth-child(3) { width: 80%; } .hsheet i:nth-child(5) { width: 64%; }
 .hsimpic img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
-.hassets svg { position: absolute; inset: 6% 10%; width: 80%; height: 88%; }
+.hassets img { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: none; animation: drift 38s linear infinite alternate; }
+@keyframes drift { from { transform: translateX(0); } to { transform: translateX(calc(-100% + 100cqw)); } }
+.hassets { container-type: inline-size; background: #e9ebee !important; }
+.hassets .hcount { position: absolute; right: 10px; bottom: 10px; font: 700 clamp(13px, 1vw, 17px)/1 var(--sans); color: #ffd200; background: #10264d; padding: 6px 11px; border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) { .hassets img { animation: none; } }
 .hassets .dev * { fill: none; stroke: #b9c8ff; stroke-width: 2; } .hassets .dev .scr { stroke: #6b98ff; } .hassets .hand path { stroke: var(--acoustic); }
 .hassets .dev { filter: drop-shadow(0 0 6px rgba(107,152,255,.55)); }
 .htext { display: grid; gap: 2px; padding: 0 4px; }
-.htext em { font: 600 13px/1 var(--mono); font-style: normal; letter-spacing: .12em; color: var(--ink-3); }
-.htext strong { font-size: clamp(18px, 1.55vw, 28px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
-.htext > span { color: var(--ink-2); font-size: clamp(13.5px, 1vw, 17px); line-height: 1.35; }
+.htext em { font: 600 clamp(14px, 1.05vw, 18px)/1 var(--mono); font-style: normal; letter-spacing: .12em; color: var(--ink-3); }
+.htext strong { font-size: clamp(22px, 2.05vw, 38px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.htext > span { color: var(--ink-2); font-size: clamp(16px, 1.3vw, 22px); line-height: 1.35; }
 .hsim .htext strong { background: linear-gradient(90deg, var(--acoustic), var(--rf)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+a.hnode { cursor: pointer; } a.hnode:hover .hmedia, a.hnode:hover .gate-media, a.hnode:focus-visible .hmedia, a.hnode:focus-visible .gate-media { border-color: var(--line-2); box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 0 44px rgba(159,193,255,.3); }
+a.hnode .htext strong::after { content: " ›"; color: var(--ink-3); } a.hnode:hover .htext strong { color: var(--link); }
+.how { pointer-events: auto; }
+/* the node lit, or pointed at: framed in the S's colours, turning (as the simulator's own cards: js/author.js, .auintro) */
+@property --hang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.hnode .hmedia::after, .hnode .gate-media::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 3px; pointer-events: none; opacity: 0; transition: opacity .35s ease;
+  background: conic-gradient(from var(--hang), #d9f272, #6b98ff, #c7a2ff, #ff8a5b, #d9f272);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: hturn 3.2s linear infinite; }
+.hnode.lit .hmedia::after, .hnode.lit .gate-media::after, a.hnode:hover .hmedia::after, a.hnode:hover .gate-media::after, a.hnode:focus-visible .hmedia::after, a.hnode:focus-visible .gate-media::after { opacity: 1; }
+@keyframes hturn { to { --hang: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .hnode .hmedia::after, .hnode .gate-media::after { animation: none; } }
 .hnode.dim { opacity: .28; filter: saturate(.4); } .hnode.lit .hmedia, .hnode.lit .gate-media { border-color: var(--line-2); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 44px rgba(107,152,255,.22); }
 .howflow path.wire { fill: none; stroke: rgba(255,255,255,.22); stroke-width: 1.4; }
 .howflow path.wire.on { stroke: url(#wireg); stroke-width: 2; }
 .howflow circle.spark { fill: #fff; filter: drop-shadow(0 0 5px #9fc1ff); }
 /* the authors' check and the way in: words over the night, the scene dimmed under them */
 .live #cap-badge, .live #cap-go { top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-.capbadge p, .capgo p { font-size: clamp(16px, min(1.35vw, 2.4vh), 21px) !important; max-width: 58ch !important; }
-.capbadge h2, .capgo h2 { font-size: clamp(34px, min(4.4vw, 7vh), 68px) !important; }
-.capbadge .medal { width: clamp(88px, 11vh, 132px); margin: 0 auto 14px; filter: drop-shadow(0 0 22px rgba(107,152,255,.45)); }
-.capbadge .medal .ms { stroke-dasharray: 220; animation: msdraw 3.2s ease-in-out infinite alternate; } @keyframes msdraw { from { stroke-dashoffset: 220; } to { stroke-dashoffset: 0; } }
-.capbadge .badgeeye { margin: 0 0 8px !important; font: 600 clamp(13px, 1vw, 16px)/1 var(--mono) !important; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3) !important; }
+.capbadge p, .capgo p { font-size: clamp(18px, min(1.7vw, 3vh), 26px) !important; max-width: 52ch !important; }
+.capbadge h2, .capgo h2 { font-size: clamp(38px, min(5vw, 8vh), 80px) !important; }
+/* (text drawn by its gradient is cut at the line box: room under the descenders, g and p) */
+.cap h1, .cap h2, .how .howhead h2 { line-height: 1.16 !important; padding-bottom: .1em; }
+.capbadge .medal canvas { display: block; width: 100% !important; height: 100% !important; }
+.capbadge .medal { width: clamp(220px, 34vh, 380px); height: clamp(220px, 34vh, 380px); pointer-events: auto; position: relative; margin: 0 auto 10px; filter: drop-shadow(0 0 40px rgba(107,152,255,.4)) drop-shadow(0 0 14px rgba(217,242,114,.25)); }
+.capbadge .badgeeye { margin: 0 0 10px !important; font: 600 clamp(15px, 1.2vw, 19px)/1 var(--mono) !important; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3) !important; }
 .capbadge .scores { display: flex; justify-content: center; gap: clamp(18px, 4vw, 64px); margin: 22px auto 6px; }
 .capbadge .scores > div { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 2px 8px; min-width: 180px; text-align: left; }
-.capbadge .scores span { grid-column: 1 / -1; font: 600 14px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
-.capbadge .scores b { font-size: clamp(44px, 5vw, 72px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; } .capbadge .scores small { color: var(--ink-3); font-size: 18px; }
+.capbadge .scores span { grid-column: 1 / -1; font: 600 clamp(14px, 1.1vw, 18px)/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.capbadge .scores b { font-size: clamp(54px, 6vw, 92px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; } .capbadge .scores small { color: var(--ink-3); font-size: 18px; }
 .capbadge .scores i { grid-column: 1 / -1; display: block; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); position: relative; overflow: hidden; margin-top: 8px; }
 .capbadge .scores i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--c); border-radius: 3px; }
-.capbadge .mocknote { font-size: 14px !important; color: #ff8a5b !important; }
+.capbadge .mocknote { font-size: 15px !important; color: #ff8a5b !important; }
 .capgo .gobtn { display: inline-flex; align-items: center; gap: 10px; margin-top: 26px; padding: 16px 30px; border-radius: 999px; font-size: clamp(18px, 1.5vw, 24px); font-weight: 600; color: #000;
   background: linear-gradient(90deg, var(--acoustic), #9fc1ff); box-shadow: 0 0 40px rgba(159,193,255,.35); pointer-events: auto; }
+.capgo .gomade { position: static !important; margin-top: 28px !important; font-size: 14px !important; color: var(--ink-3) !important; }
 .capgo .gobtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
 .live .capgo { pointer-events: none; } .live .capgo .gobtn { pointer-events: auto; }
 @media (max-width: 900px) { .howgrid { grid-template-columns: 1fr 1fr; grid-template-areas: "paper uni" "assets world" "sim sim"; } .howflow { display: none; } }
@@ -171,9 +188,10 @@ a:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; border-ra
   <a class="brand" href="#top" id="brand">Sense2Sim</a>
   <!-- (the entrances open a tab of their own: this page stays where the reader left it; AmI, 2026-11-18) -->
   <nav aria-label="Entrances">
-    <a href="https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim_Universe/" target="_blank" rel="noopener">Sensing Universe</a>
-    <a href="https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim_Universe/" target="_blank" rel="noopener">Sensing World</a>
-    <a href="#go" class="navgo">Start LLAP ›</a>
+    <a href="https://claude.ai/artifact/NjkMBWE5DPpH644MBfZG6y" target="_blank" rel="noopener">Sensing Universe</a>
+    <a href="https://claude.ai/artifact/RLT2NHMnu2J2EpdaXQoR6z#en" target="_blank" rel="noopener">3D Assets</a>
+    <a href="https://claude.ai/artifact/SPCMbPA1EA8zLtrC38EaE2" target="_blank" rel="noopener">Sensing World</a>
+    <a href="../#who" class="navgo" data-in>Start LLAP ›</a>
   </nav>
 </header>
 
@@ -184,13 +202,13 @@ a:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; border-ra
     <section class="cap" id="cap-hero">
       <p class="eyebrow">Sense2Sim</p>
       <h1>Turning Ubiquitous Sensing Research Into Interactive Physical Models</h1>
-      <p class="thispaper">This one: <b>Device-Free Gesture Tracking Using Acoustic Signals</b> · LLAP, MobiCom 2016</p>
+      <p class="thispaper">This one: <b>Device-Free Gesture Tracking Using Acoustic Signals</b> · LLAP, ACM MobiCom 2016</p>
       <span class="cue">Scroll <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></span>
     </section>
 
     <section class="cap" id="cap-uni">
       <h2>Sensing Universe</h2>
-      <p>Every paper is a star, gathered by how it senses. LLAP is one of them, among the acoustic ones.</p>
+      <p>Every paper is a star, gathered by how it senses. LLAP is one of them.</p>
     </section>
 
     <section class="cap" id="cap-world">
@@ -206,48 +224,57 @@ a:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; border-ra
         <svg class="howflow" id="howflow" aria-hidden="true"></svg>
         <div class="hnode hpaper" data-n="0"><span class="hmedia hpaperpic"><span class="hsheet"><b>Device-Free Gesture Tracking Using Acoustic Signals</b><i></i><i></i><i></i><i></i><i></i></span></span>
           <span class="htext"><em>The paper goes in</em><strong>LLAP</strong><span>its text, its figures and its talk</span></span></div>
-        <a class="gate hnode" id="gate-uni" data-n="1" href="https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim_Universe/" target="_blank" rel="noopener">
+        <a class="gate hnode" id="gate-uni" data-n="1" href="https://claude.ai/artifact/NjkMBWE5DPpH644MBfZG6y" target="_blank" rel="noopener">
           <span class="gate-media"></span>
           <span class="gate-text htext"><em>1</em><strong>Sensing Universe</strong><span>The paper placed among its related research.</span></span>
         </a>
-        <div class="hnode" id="node-assets" data-n="2"><span class="hmedia hassets"><svg viewBox="0 0 200 120" aria-hidden="true">
-            <g class="dev"><rect x="34" y="18" width="40" height="80" rx="8"/><rect x="40" y="26" width="28" height="60" rx="3" class="scr"/><circle cx="54" cy="92" r="2.4"/></g>
-            <g class="dev"><path d="M112 98 C 112 70, 118 52, 136 46 C 150 42, 160 50, 160 64 L 160 98 Z"/><circle cx="141" cy="68" r="9"/><circle cx="141" cy="68" r="3.5"/></g>
-            <g class="dev hand"><path d="M86 104 C 84 88, 88 74, 96 66 L 100 44 C 101 39, 107 39, 107 44 L 106 62 L 110 40 C 111 35, 117 35, 117 40 L 115 62 L 119 46 C 120 41, 126 42, 125 47 L 121 70 C 124 80, 120 96, 112 104 Z"/></g>
-          </svg></span>
-          <span class="htext"><em>2</em><strong>Sensing 3D Assets</strong><span>The phone, the speaker and the hand LLAP uses, as 3D models.</span></span></div>
-        <a class="gate hnode" id="gate-world" data-n="3" href="https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim_Universe/" target="_blank" rel="noopener">
+        <a class="hnode" id="node-assets" data-n="2" href="https://claude.ai/artifact/RLT2NHMnu2J2EpdaXQoR6z#en" target="_blank" rel="noopener"><span class="hmedia hassets"><img src="../about/assets.jpg" alt=""></span>
+          <span class="htext"><em>2</em><strong>Sensing 3D Assets</strong><span>Reusable 3D models of devices, sensors and people, LLAP's own among them.</span></span></a>
+        <a class="gate hnode" id="gate-world" data-n="3" href="https://claude.ai/artifact/SPCMbPA1EA8zLtrC38EaE2" target="_blank" rel="noopener">
           <span class="gate-media"></span>
           <span class="gate-text htext"><em>3</em><strong>Sensing World</strong><span>The places such papers work in, built with those models.</span></span>
         </a>
-        <div class="hnode hsim" id="node-sim" data-n="4"><span class="hmedia hsimpic"><img src="img/sim.jpg" alt=""></span>
-          <span class="htext"><em>4</em><strong>The LLAP Simulator</strong><span>LLAP's method, run in its place with its devices.</span></span></div>
+        <a class="hnode hsim" id="node-sim" data-n="4" href="../#who" data-in><span class="hmedia hsimpic"><img src="../thumbs/use.jpg" alt=""></span>
+          <span class="htext"><em>4</em><strong>The LLAP Simulator</strong><span>LLAP's method, run in its place with its devices.</span></span></a>
       </div>
-      <p class="madeby">The Sensing Universe, the Sensing World and this simulator are generated by the Sense2Sim skill and AI agent models. AI agent models may make mistakes.</p>
+
     </section>
 
     <!-- the authors' check: what to expect of this simulation (not in the user study) -->
     <section class="cap capbadge" id="cap-badge" aria-label="Checked by its authors">
-      <div class="medal" aria-hidden="true"><svg viewBox="0 0 120 120"><defs><linearGradient id="mg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9f272"/><stop offset=".35" stop-color="#6b98ff"/><stop offset=".7" stop-color="#c7a2ff"/><stop offset="1" stop-color="#ff8a5b"/></linearGradient></defs>
-        <circle cx="60" cy="60" r="54" fill="#0b0d12" stroke="url(#mg)" stroke-width="3"/><path class="ms" d="M80 36 C 72 26, 44 26, 42 42 C 40 58, 80 56, 79 75 C 78 94, 46 94, 38 82" fill="none" stroke="url(#mg)" stroke-width="10" stroke-linecap="round"/></svg></div>
+      <div class="medal" id="medal"></div>
       <p class="badgeeye">Checked by the paper's authors</p>
       <h2>Its authors went through it, page by page</h2>
-      <div class="scores"><div><span>Accurate</span><b>4.6</b><small>/ 5</small><i style="--w:92%;--c:#4ecb85"></i></div><div><span>Quality</span><b>4.4</b><small>/ 5</small><i style="--w:88%;--c:#7fa6ff"></i></div></div>
+      <div class="scores"><div><span>Accurate</span><b id="sa">–</b><small>/ 5</small><i style="--w:92%;--c:#19a85a"></i></div><div><span>Quality</span><b id="sq">–</b><small>/ 5</small><i style="--w:88%;--c:#2f6ee8"></i></div></div>
       <p>Accurate: does each page say what the paper says. Quality: is it clear and well made. On every page, the mark at the bottom left shows that page's own scores.</p>
-      <p class="mocknote">Mock: these two numbers are placeholders; LLAP's authors have not scored it yet.</p>
     </section>
 
     <!-- the way in -->
     <section class="cap capgo" id="cap-go">
       <h2>Now try LLAP yourself</h2>
-      <p>Move the hand, switch LLAP's parts off, change the room: every control runs the paper's own method.</p>
-      <a class="gobtn" id="go" href="#">Start the simulator <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2l5 4-5 4"/></svg></a>
+      <p>Every control runs the paper's own method, in its place, with its devices.</p>
+      <a class="gobtn" id="go" href="../#who" data-in>Start the simulator <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2l5 4-5 4"/></svg></a>
+      <p class="madeby gomade">The Sensing Universe, the Sensing World and this simulator are generated by the Sense2Sim skill and AI agent models. AI agent models may make mistakes.</p>
     </section>
   </div>
 </main>
 
-<script>window.S2S_PAPER = { title: "Device-Free Gesture Tracking Using Acoustic Signals", short: "LLAP", g: 1, i: 53 };
-document.addEventListener("DOMContentLoaded", function () { var g = document.getElementById("go"); if (g) g.href = "https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim-LLAP/#who"; });</script>
+<script>
+// this simulation's paper (tools/site.mjs fills it): its title, short name, its star in intro-data.js ({ g, i }) where
+// known, and its authors' scores ({ a, q, who, date }) where they are given
+window.S2S_PAPER = {"title":"Device-Free Gesture Tracking Using Acoustic Signals","short":"LLAP","g":1,"i":53};
+(function () {
+  var q = location.search, study = /[?&](study|userstudy|user_study)=1(&|$)/.test(q);
+  try { sessionStorage.setItem("s2s-opening", "1"); } catch (e) {} // (the simulator opens here once a visit: js/feedback.js, opening)
+  // the way in: the simulator, with the same address's settings (?study=1)
+  document.addEventListener("DOMContentLoaded", function () { [].forEach.call(document.querySelectorAll("[data-in]"), function (a) { a.href = "../" + q + "#who"; }); });
+  // the authors' check: only where they gave scores, and never in the user study (no scores for its readers)
+  var P = window.S2S_PAPER; if (P && (study || !P.scores)) P.scored = false;
+  if (P && P.scores && !study) P.scored = true;
+})();
+</script>
+<script src="medal.js"></script>
+<script type="module" src="medal3d.js"></script>
 <script src="intro-data.js"></script>
 <script src="intro.js"></script>
 <!-- page:end -->
