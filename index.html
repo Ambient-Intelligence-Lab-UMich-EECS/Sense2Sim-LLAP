@@ -12555,26 +12555,23 @@ const FB_H2C = "https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2can
 const PAGE_THUMBS = {"about":"thumbs/about.jpg","all":"thumbs/all.jpg","c1":"thumbs/c1.jpg","c2":"thumbs/c2.jpg","c3":"thumbs/c3.jpg","demo":"thumbs/demo.jpg","exp-ablation":"thumbs/exp-ablation.jpg","exp-array":"thumbs/exp-array.jpg","exp-general":"thumbs/exp-general.jpg","exp-kg":"thumbs/exp-kg.jpg","exp-kg2":"thumbs/exp-kg2.jpg","exp-physics":"thumbs/exp-physics.jpg","exp-related":"thumbs/exp-related.jpg","exp-world":"thumbs/exp-world.jpg","explore":"thumbs/explore.jpg","gap":"thumbs/gap.jpg","how":"thumbs/how.jpg","idea":"thumbs/idea.jpg","inuse":"thumbs/inuse.jpg","level-1":"thumbs/level-1.jpg","motivation":"thumbs/motivation.jpg","open":"thumbs/open.jpg","s1":"thumbs/s1.jpg","s2":"thumbs/s2.jpg","s3":"thumbs/s3.jpg","see-2":"thumbs/see-2.jpg","see":"thumbs/see.jpg","sense2sim":"thumbs/sense2sim.jpg","sim-real":"thumbs/sim-real.jpg","start-2":"thumbs/start-2.jpg","start":"thumbs/start.jpg","terms":"thumbs/terms.jpg","title":"thumbs/title.jpg","use":"thumbs/use.jpg","who":"thumbs/who.jpg"};
 // what each answer says it came from: the simulation (its repository's name, Sense2Sim-<paper>), the kit's version and
 // the kind of reader (as picked on the first page, or the default kind marked "not picked"); tools/site.mjs fills S2S_SITE
-const S2S_SITE = {"name":"Sense2Sim-LLAP","kit":"6.0.0-alpha.84","title":"Device-Free Gesture Tracking Using Acoustic Signals","url":"https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim-LLAP/","build":"20261122T070219","opening":true};
+const S2S_SITE = {"name":"Sense2Sim-LLAP","kit":"6.0.0-alpha.84","title":"Device-Free Gesture Tracking Using Acoustic Signals","url":"https://ambient-intelligence-lab-umich-eecs.github.io/Sense2Sim-LLAP/","build":"20261122T073550","opening":true};
 const s2sSite = () => S2S_SITE.name || (location.pathname.match(/\/(Sense2Sim-[^/]+)\//) || [])[1] || document.title;
 const s2sKit = () => S2S_SITE.kit || "";
 // A reader never works on an older page than the site's (the owner, 2026-11-22: “每次进入强制刷新浏览器缓存”): as the page
 // opens it asks the site's version.json, never from a cache; where that names a newer build than this page's, the page
 // is loaded again once, at an address the caches have not seen (?v=<build>).
 // The opening (tools/site.mjs --opening, opening/ beside the page; the owner, 2026-11-22: “现在不是simulator变成这里的一个
-// 功能块了嘛，所以exit之后回到这一页”): a visit opens there first (once: the opening marks the visit, sessionStorage
-// "s2s-opening"); the simulator's first page, and so its end's “Start from the beginning” and the bar's Sense2Sim, go back
+// 功能块了嘛，所以exit之后回到这一页”): every entry without a page in its address opens there first; the simulator's first page, and so its end's “Start from the beginning” and the bar's Sense2Sim, go back
 // to it, to how it works whole (#how). The address's settings (?study=1) go along.
 (function opening() {
   if (typeof document === "undefined" || navigator.webdriver || !S2S_SITE.opening) return;
-  // the opening marks the visit with its mode ("study" or "plain"): an address in the other mode (?study=1 added or taken
-  // off, the owner, 2026-11-22: “study版本进去咋不是universe页”) opens it again. A page asked for by the address (#who,
-  // the opening's Start) goes there: the address as loaded (S2S_HASH0, deck.html's first script), not location.hash, which
-  // the deck has already written (#about) before this runs.
-  const mode = s2sStudy() ? "study" : "plain";
-  let seen = ""; try { seen = sessionStorage.getItem("s2s-opening") || ""; } catch (e) {}
+  // every entry opens there first (the owner, 2026-11-22: “能不能做到不管有没有打开过 每次进去第一页都是open”), seen or
+  // not, study or not. A page asked for by the address (#who: the opening's Start, a reload, a link to a page) goes
+  // there: the address as loaded (S2S_HASH0, deck.html's first script), not location.hash, which the deck has already
+  // written (#about) before this runs.
   const asked = !!(typeof window.S2S_HASH0 === "string" ? window.S2S_HASH0 : location.hash);
-  if (seen !== mode && !asked) { location.replace("opening/" + location.search); return; }
+  if (!asked) { location.replace("opening/" + location.search); return; }
   const back = () => S2S_WRAPUP(() => { location.href = "opening/" + location.search + "#how"; });
   const wrap = () => { const g0 = go; go = function (i, s) { if (i === 0 && cur !== 0) return back(); g0(i, s); }; };
   if (typeof go === "function") wrap(); else addEventListener("DOMContentLoaded", wrap);
@@ -12718,14 +12715,14 @@ function s2sEnd(then, at) {
   let closingForGood = false;
   const finish = () => { S2S_ENDING = false; S2S_END_API = null; try { sessionStorage.setItem("s2s-end-done", "1"); } catch (e) {} const t = S2S_END_THEN; S2S_END_THEN = null; if (t) t(); };
   const api = S2S_END_API = S2S_BOARD({ label: ovw ? "All pages" : "Before you go", sticky: true,
-    top: ovw ? "All pages. Rest on a page to see what you gave on it; “Go to this page” opens it." : "Before you go: what you gave, page by page. Rest on a page to see its questions, scores and notes and change them; then submit all.",
+    top: ovw ? "All pages. Rest on a page to see what you gave on it; “Go to this page” opens it." : "Before you go: what you gave, page by page. Rest on a page to see its questions, scores and notes and change them, or go to it; then submit all.",
     badge: (p) => tabs.map((t) => (t.badge ? t.badge(p) || "" : "")).join(""),
     boxes: (p) => tabs.flatMap((t) => (t.boxes ? t.boxes(p) || [] : [])),
     miss: (p) => tabs.some((t) => t.miss && t.miss(p)),
     side(el, i, a) {
       const P = a.pages[i], redraw = () => { a.refresh(); this.side(el, i, a); };
-      el.innerHTML = i >= 0 ? `<h3>${P.i + 1} · ${String(P.name).replace(/</g, "&lt;")}</h3>${ovw ? `<p><button type="button" class="fbbtn fbgo" data-goto="${i}">Go to this page ›</button></p>` : ""}` : `<h3>${ovw ? "All pages" : "Before you go"}</h3><p class="fbdim">Rest on a page on the board to see what you gave on it. A page framed in orange still wants something.</p>`;
-      const gt = el.querySelector("[data-goto]"); if (gt) gt.onclick = () => { closingForGood = true; a.close(); S2S_ENDING = false; S2S_OVERVIEW = false; S2S_END_API = null; go(i, 0); };
+      el.innerHTML = i >= 0 ? `<h3>${P.i + 1} · ${String(P.name).replace(/</g, "&lt;")}</h3><p><button type="button" class="fbbtn fbgo fbgoto" data-goto="${i}">Go to this page ›</button></p>` : `<h3>${ovw ? "All pages" : "Before you go"}</h3><p class="fbdim">Rest on a page on the board to see what you gave on it. A page framed in orange still wants something.</p>`;
+      const gt = el.querySelector("[data-goto]"); if (gt) gt.onclick = () => { /* in the end's summary too (the owner, 2026-11-22: “右边…需要一个跳转到选中页面的按钮”): the way off waits; leaving again asks again */ S2S_END_THEN = null; closingForGood = true; a.close(); S2S_ENDING = false; S2S_OVERVIEW = false; S2S_END_API = null; go(i, 0); };
       for (const t of tabs) { const sec = document.createElement("section"); sec.className = "s2ssec"; sec.innerHTML = `<h4>${t.label}</h4><div></div>`; el.append(sec); t.panel(sec.lastChild, i, redraw); }
     },
     foot(el, a) {
@@ -12858,10 +12855,13 @@ function s2sStudy() {
 .fbdlg { position: fixed; inset: 0; z-index: 80; background: rgba(10,12,16,.45); display: grid; place-items: center; padding: 16px; }
 .fbdlg > div { background: var(--panel, #fffdf8); color: var(--ink, #1d2129); border-radius: 12px; padding: 18px; width: min(560px, 100%); display: grid; gap: 12px; font: 17px/1.5 system-ui, sans-serif; }
 .fbov { position: fixed; inset: 0; z-index: 75; background: var(--bg, #efe9dd); }
+.fbovtip { position: fixed; z-index: 62; width: min(380px, calc(100vw - 24px)); padding: 14px 16px; display: grid; gap: 8px; color: var(--ink, #1d2129); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font: 15px/1.45 system-ui, sans-serif; } .fbovtip h3 { margin: 0; font-size: 17px; } .fbovtip p { margin: 0; } .fbovtip::after { content: ""; position: absolute; left: 22px; bottom: -9px; width: 14px; height: 14px; background: var(--panel, #fffdf8); transform: rotate(45deg); }
+.fbov .fbtour { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); right: auto; top: 64px; bottom: auto; max-width: min(420px, calc(100vw - 32px)); z-index: 3; } .fbtour ol { margin: 6px 0 10px; padding-left: 20px; display: grid; gap: 6px; } .fbtour li { line-height: 1.4; }
 .fbov.fbwith .fbboard { right: min(460px, 42vw); }
 .fbside { position: absolute; right: 0; top: 0; bottom: 52px; width: min(460px, 42vw); box-sizing: border-box; overflow-y: auto; padding: 64px 18px 18px; background: var(--panel, #fffdf8); border-left: 1px solid rgba(128,128,128,.3); color: var(--ink, #1d2129); font: 16px/1.45 system-ui, sans-serif; display: grid; gap: 12px; align-content: start; }
 .fbside h3 { margin: 0; font: 600 20px/1.25 system-ui, sans-serif; } .fbside p { margin: 0; } .fbside .fbdim { opacity: .7; font-size: 14px; }
 .fbfoot { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: max(12px, env(safe-area-inset-top, 0px)); display: flex; gap: 10px; align-items: center; z-index: 2; font: 15px system-ui, sans-serif; color: var(--ink, #1d2129); }
+.fbgoto { background: var(--accent, #7a5a12) !important; border-color: var(--accent, #7a5a12) !important; color: var(--bg, #fffdf8) !important; font-weight: 600; }
 .fbfoot .fbbtn[disabled] { opacity: .45; cursor: not-allowed; } .fbfoot .fbgo { background: var(--accent, #7a5a12); border-color: var(--accent, #7a5a12); color: var(--bg, #fffdf8); font-weight: 600; }
 .fbtile .fbbadge { position: absolute; right: 8px; top: 8px; display: flex; gap: 6px; font: 600 22px system-ui, sans-serif; }
 .fbtile .fbbadge:empty { display: none; }
@@ -13040,6 +13040,24 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
   mine.onclick = openSummary;
   // the overview: the bar's button after → (deck.html, #overview), and the key O
   { const ob = document.getElementById("overview"); if (ob) { ob.hidden = false; ob.addEventListener("click", (e) => { e.stopPropagation(); s2sOverview(); }); } }
+  // the first time in a visit (each mode its own), a card beside it says what it is (the owner, 2026-11-22: “左下角缩略图预览icon
+  // 也加到教程里介绍一下…user study是否 可能话要不一样”): after the think-aloud card and the cards that ask first are gone;
+  // it does not hold the pages, and goes on “Got it”, on the button, or on the key O
+  { const ob = document.getElementById("overview"), tk = "s2s-overview-tip" + (s2sStudy() ? ":study" : "");
+    let seenO = false; try { seenO = !!sessionStorage.getItem(tk); } catch (e) {}
+    if (ob && !seenO) { let c = null; const gone = () => { if (c) c.remove(); c = null; try { sessionStorage.setItem(tk, "1"); } catch (e) {} };
+      const show = () => {
+        if (c || document.querySelector(".fbcard, #s2suser, .auintro, .aucert, .svcard, .fbov, .fbsum, .s2sleave")) return false;
+        const r = ob.getBoundingClientRect(); if (!r.width) return false;
+        c = document.createElement("div"); c.className = "fbovtip fbintro-frame"; c.setAttribute("role", "note");
+        c.innerHTML = s2sStudy()
+          ? `<h3>All pages at a glance</h3><p>This button shows every page on one board. Rest on a page to see your answers, scores and notes for it, change them, or jump to it.</p><p class="fbmuted">Use it any time to see what is still missing. The key O opens it too.</p><div class="fbrow"><button class="fbbtn fbprimary" type="button">Got it</button></div>`
+          : `<h3>All pages at a glance</h3><p>This button shows every page on one board, so you can jump to any page quickly.</p><p class="fbmuted">Your think-aloud notes are there too, page by page, to look over and change. The key O opens it too.</p><div class="fbrow"><button class="fbbtn fbprimary" type="button">Got it</button></div>`;
+        c.style.left = Math.max(12, r.left - 8) + "px"; c.style.bottom = (innerHeight - r.top + 14) + "px";
+        c.querySelector("button").onclick = (e) => { e.stopPropagation(); gone(); };
+        document.body.append(c); return true; };
+      ob.addEventListener("click", gone); addEventListener("keydown", (e) => { if (e.key === "o" || e.key === "O") gone(); });
+      const t = setInterval(() => { try { sessionStorage.getItem(tk) && clearInterval(t); } catch (e) {} if (show()) clearInterval(t); }, 700); } }
   addEventListener("keydown", (e) => { if ((e.key === "o" || e.key === "O") && !e.metaKey && !e.ctrlKey && !e.altKey && !(e.target.matches && e.target.matches("input, textarea, select")) && !document.querySelector(".fbov, .fbsum, .svcard, .aucard, .aucert, .auintro, .fbcard, #s2suser, .s2sleave")) { e.preventDefault(); s2sOverview(); } });
   function dialog(html, wire) { const d = document.createElement("div"); d.className = "fbdlg"; d.innerHTML = `<div role="dialog" aria-modal="true">${html}</div>`; document.body.append(d); wire(d, () => d.remove()); d.addEventListener("click", (e) => { if (e.target === d) d.remove(); }); }
   // the picture as sent: the window as it was, its box drawn on it (orange, the note's number at its corner), so the
@@ -13120,6 +13138,14 @@ pre.fbpre { background: rgba(128,128,128,.08); border-radius: 8px; padding: 10px
       <div class="fbtop"><button class="fbbtn" type="button" data-k="close">✕ Close</button><span>${o && o.top ? o.top : "Which page? Move fast to see more, slow down to look closer, rest on one to see it whole; click it to open it."}</span></div>${o ? `<div class="fbfoot"></div>` : ""}`;
     if (o) { ov.classList.add("fbrev"); if (o.side) ov.classList.add("fbwith"); if (o.label) ov.setAttribute("aria-label", o.label); }
     document.body.append(ov);
+    // how to use the board, the first time it opens in a visit (the owner, 2026-11-22: “这一页也做一些教程 比如怎么选页面 怎么跳转等”):
+    // a card over the board's corner, until “Got it” (sessionStorage, each mode its own)
+    if (o && !navigator.webdriver) { const tk = "s2s-board-tour" + (s2sStudy() ? ":study" : ""); let seenT = false; try { seenT = !!sessionStorage.getItem(tk); } catch (e) {}
+      if (!seenT) { const sum = !S2S_OVERVIEW, c = document.createElement("div"); c.className = "fbcard fbtour"; c.setAttribute("role", "note");
+        c.innerHTML = `<h3>How to use this board</h3><ol><li><b>Look around.</b> Move the pointer over the pages. Move fast to see them all, slow down to look closer.</li><li><b>Pick a page.</b> Rest on it for a moment, or click it. What you gave on it shows on the right${sum ? ", where you can change it" : ""}.</li><li><b>Jump to it.</b> Press “Go to this page ›” on the right.</li>${sum ? "<li><b>A page framed in orange</b> still wants an answer or a score.</li><li><b>Done?</b> Press “Submit all” at the bottom right. Nothing is sent before that.</li>" : "<li><b>Close.</b> “✕ Close” at the top left, or Esc, takes you back where you were.</li>"}</ol><div class="fbrow"><button class="fbbtn fbprimary" type="button">Got it</button></div>`;
+        c.querySelector("button").onclick = (e) => { e.stopPropagation(); c.remove(); try { sessionStorage.setItem(tk, "1"); } catch (e2) {} };
+        for (const ev of ["click", "pointerdown", "pointermove", "keydown"]) c.addEventListener(ev, (e) => e.stopPropagation());
+        ov.append(c); } }
     closeBoard = () => { ov.remove(); closeBoard = () => {}; if (o && o.onclose) o.onclose(); };
     ov.querySelector('[data-k="close"]').onclick = () => closeBoard();
     const B = board(ov.querySelector(".fbboard"), ov.querySelector(".fbsheet"));

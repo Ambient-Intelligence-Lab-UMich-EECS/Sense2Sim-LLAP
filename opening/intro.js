@@ -5,9 +5,11 @@
         ones moving apart (parallax)
      3  each paper shrinks to a star and flies to its place in the Sensing Universe: the galaxies of the per-paper
         page's flight (one cluster for each way of sensing, the oldest paper at its heart, the newest at its rim)
-     4  the stars and their dust turn to particles and settle as a point cloud of the Sensing World's everyday
-        spaces, a sensing pulse running through it
-     5  the papers' stars fly out again: the Universe on the left, the World on the right, two entrances
+     4  the 3D assets: the stars and their dust leave the clusters and settle as the things the papers sense with and
+        sense (assets.js), each turning, a scan running over it
+     5  the assets' particles go on to settle as a point cloud of the Sensing World's everyday spaces, a sensing
+        pulse running through it
+     6  the papers' stars fly out again: the Universe on the left, the World on the right, two entrances
    One classic script, no modules, no network, no picture files: it opens from a zip by double-click (file://).
    The papers come from intro-data.js (tools/landing/build-data.mjs writes it from the knowledge base).
    For checks: S2S_INTRO.freeze(p, t) draws the scene at scroll progress p (0..1) and time t; unfreeze() lets go. */
@@ -17,7 +19,7 @@
   var root = document.documentElement;
   var $ = function (id) { return document.getElementById(id); };
   var stage = $("stage"), track = $("track"), canvas = $("gl"), labels = $("labels");
-  var capHero = $("cap-hero"), capUni = $("cap-uni"), capWorld = $("cap-world"), gates = $("gates");
+  var capHero = $("cap-hero"), capUni = $("cap-uni"), capAssets = $("cap-assets"), capWorld = $("cap-world"), gates = $("gates");
   var API = (window.S2S_INTRO = { ready: false, live: false, error: null, p: 0, frames: 0 });
 
   // where the entrances lead: the site's own pages, or what the page sets before this script (a preview)
@@ -49,7 +51,7 @@
   function hex(c) { return [parseInt(c.slice(1, 3), 16) / 255, parseInt(c.slice(3, 5), 16) / 255, parseInt(c.slice(5, 7), 16) / 255]; }
 
   // the story's parts along the scroll (0..1)
-  var T = { dolly: [0, 0.38], fly: [0.38, 0.6], burst: [0.68, 0.87], split: [0.9, 1.0] };
+  var T = { dolly: [0, 0.33], fly: [0.33, 0.52], assets: [0.57, 0.7], burst: [0.75, 0.89], split: [0.91, 1.0] };
   // past it (of the whole scroll): the five steps lit in turn, the authors' check, the way in
   var STORY = 0.64, HOW = [0.665, 0.84], BADGE = [0.86, 0.9, 0.93], GO = [0.945, 0.985];
   var FLY_DUR = 0.42;
@@ -258,7 +260,7 @@
   // ---------------------------------------------------------------- the particles
   // One paper is CH particles: the first is its star, the rest its dust. Each holds its place in the universe, on
   // the wall and in the world.
-  var CH = 30, M = N * CH, STRIDE = 19;
+  var CH = 30, M = N * CH, STRIDE = 23;
   var buf = new Float32Array(M * STRIDE);
   var starsNow = null, portraitNow = null;
   function fillParticles() {
@@ -273,6 +275,12 @@
     wi.sort(by0); pi.sort(by0);
     var toWorld = new Int32Array(M);
     for (var c = 0; c < M; c++) toWorld[pi[c][1]] = wi[c][1];
+    // which asset point: the assets' columns from left to right, as the stars (assets.js; six columns wide)
+    var AS = window.S2S_ASSETS, asset = AS ? AS.build(M, rng(21)) : new Float32Array(M * 4), ai = [];
+    for (var e = 0; e < M; e++) ai.push([(asset[e * 4 + 3] % 6) * 10 + asset[e * 4] * 3 + (R() - 0.5) * 5, e]);
+    ai.sort(by0);
+    var toAsset = new Int32Array(M);
+    for (var c2 = 0; c2 < M; c2++) toAsset[pi[c2][1]] = ai[c2][1];
     for (var m = 0; m < M; m++) {
       var k = m % N, ch = Math.floor(m / N), o = m * STRIDE, cell = wall.cellOf[k], hero = wall.heroOf[k];
       var g = 0; while (g < 6 && k >= OFF[g] + COUNTS[g]) g++;
@@ -283,6 +291,7 @@
       buf[o + 8] = h1; buf[o + 9] = h2; buf[o + 10] = ch ? h3 : HH[k]; buf[o + 11] = h4;
       buf[o + 12] = g; buf[o + 13] = ch; buf[o + 14] = (0.5 * cell.d) / wall.maxD + 0.08 * HH[k]; buf[o + 15] = 4.2 + 6.5 * HZ[k];
       buf[o + 16] = hero; buf[o + 17] = cell.d; buf[o + 18] = cell.d < 0.01 ? 0 : cell.d < 1 ? 0.06 * Math.sign(cell.dx) : (HH[k] - 0.5) * 0.05;
+      var av = toAsset[m] * 4; buf[o + 19] = asset[av]; buf[o + 20] = asset[av + 1]; buf[o + 21] = asset[av + 2]; buf[o + 22] = asset[av + 3]; // 19 the asset's point and its slot
     }
   }
   function writeStars(portrait) {
@@ -581,6 +590,8 @@
 
   var VS_POINT = HEAD + "\n" + [
     "uniform int uHi[12]; uniform float uHiA[12];",
+    "layout(location=7) in vec4 aAsset;",
+    "uniform float uA; uniform vec2 uAC; uniform vec2 uACell; uniform float uAS; uniform float uACols; uniform float uARows;",
     "out vec3 vCol; out float vA;",
     "void main(){",
     "  float star = aInfo.y < .5 ? 1. : 0.;",
@@ -594,6 +605,16 @@
     "  float side = aRnd.z < .5 ? -1. : 1.;",
     "  vec2 pos = flight(pp, pu, e, side);",
     // to the world: each particle in its own time, the middle of the universe first
+    // to the assets: each particle in its own time, the left columns first; each asset turning, spun into place
+    "  float ta = clamp((uA - aRnd.w * .22 - mod(aAsset.w, uACols) / uACols * .16) / .62, 0., 1.), ea = easeIO(ta);",
+    "  vec2 acr = vec2(mod(aAsset.w, uACols), floor(aAsset.w / uACols + .001));",
+    "  vec2 ac = uAC + (acr - (vec2(uACols, uARows) - 1.) * .5) * uACell;",
+    "  float ya = uTime * .42 + aAsset.w * .9 + (1. - ea) * 2.4, ca = cos(ya), sa = sin(ya);",
+    "  vec3 qa = vec3(aAsset.x * ca + aAsset.z * sa, aAsset.y, -aAsset.x * sa + aAsset.z * ca);",
+    "  float upa = qa.y * .95 - qa.z * .31, depa = qa.y * .31 + qa.z * .95;",
+    "  vec2 pAs = ac + vec2(qa.x, -upa) * uAS / (1. - depa * .12);",
+    "  vec2 dA = pAs - pos;",
+    "  vec2 pBase = mix(pos, pAs, ea) + vec2(-dA.y, dA.x) * (.16 * side) * sin(3.14159265 * ea);",
     "  float bd = aRnd.w * .28 + clamp(length(aStar), 0., 1.) * .17;",
     "  float tb = clamp((uB - bd) / .55, 0., 1.), eb = easeIO(tb);",
     "  float cy = cos(uYaw), sy = sin(uYaw);",
@@ -606,7 +627,13 @@
     "  float back = star * easeIO(clamp((uS - aRnd.y * .35) / .65, 0., 1.));",
     "  float w = eb * (1. - back);",
     "  vec2 dir = normalize(dv + vec2(.0001, .0002));",
-    "  pos = mix(pos, pw, w) + dir * uUniS * .06 * sin(3.14159265 * tb) * (1. - .5 * star) * (1. - back);",
+    "  vec2 pFrom = mix(pos, pBase, 1. - back);",
+    "  pos = mix(pFrom, pw, w) + dir * uUniS * .06 * sin(3.14159265 * tb) * (1. - .5 * star) * (1. - back);",
+    // in the assets (not yet in the world): every point alike, in its kind's colour, brighter where it faces the
+    // reader; a scan line running up each asset
+    "  float asg = ea * (1. - eb);",
+    "  float scanY = fract(uTime * .22 + aAsset.w * .137) * 2.8 - 1.4, sd = (aAsset.y - scanY) * 7.;",
+    "  float scan = exp(-sd * sd) * asg, face = clamp(depa * .5 + .5, 0., 1.);",
     "  float tw = .55 + .45 * sin(uTime * 2.3 + aRnd.x * 6.2831853);",
     "  vec3 mc = uMod[int(aInfo.x + .5)];",
     "  float hgt = clamp(aWorld.y / 5., 0., 1.);",
@@ -625,6 +652,7 @@
     "    if (uLag > 0.) { a *= (tf > 0. && tf < 1.) ? uTrail : 0.; size *= .85; }",
     // (a star whose name is shown just now shines out)
     "    float hi = 0.; if (uLag <= 0.) { for (int i = 0; i < 12; i++) { if (gl_VertexID == uHi[i]) hi = max(hi, uHiA[i]); } }",
+    "    hi *= 1. - asg;",
     "    size *= 1. + 1.5 * hi; a = mix(a, max(a, 1.35), hi); col = mix(col, vec3(1.), .35 * hi);",
     "    a *= 1. + .8 * pulse * w;",
     "  } else {",
@@ -634,6 +662,8 @@
     "    col = mix(mc, lidar, smoothstep(.1, .75, tb));",
     "    a *= 1. + 1.6 * pulse; size += 1.3 * pulse;",
     "  }",
+    "  if (asg > 0.) { float aa = (.22 + .4 * face) * (uLag > 0. ? 0. : 1.); a = mix(a, aa, asg); size = mix(size, (1.5 + .9 * face) * uStarK + 1.6 * scan, asg);",
+    "    col = mix(col, mix(mc * (.8 + .4 * face), vec3(1.), .04 + .75 * scan / max(asg, .001)), asg); a += 1.1 * scan; }",
     "  vCol = col; vA = a;",
     "  gl_PointSize = max(size * uDpr, 1.);",
     "  gl_Position = a > .003 ? clipOf(pos, 0.) : vec4(2., 2., 2., 1.);",
@@ -671,12 +701,12 @@
   var W = 1, H = 1, dpr = 1, heroBottom = 200, bandBottom = 200;
   var mediaUni = $("gate-uni").querySelector(".gate-media"), mediaWorld = $("gate-world").querySelector(".gate-media");
   var textUni = $("gate-uni").querySelector(".gate-text"), textWorld = $("gate-world").querySelector(".gate-text");
-  var galLabels = [], starLabels = [], hiK = new Int32Array(SLOTS).fill(-1), hiA = new Float32Array(SLOTS);
+  var galLabels = [], starLabels = [], assetLabels = [], hiK = new Int32Array(SLOTS).fill(-1), hiA = new Float32Array(SLOTS);
 
   function bindParticles(divisor) {
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     var off = 0;
-    [[0, 2], [1, 3], [2, 3], [3, 4], [4, 4], [5, 3]].forEach(function (a) {
+    [[0, 2], [1, 3], [2, 3], [3, 4], [4, 4], [5, 3], [7, 4]].forEach(function (a) {
       gl.enableVertexAttribArray(a[0]); gl.vertexAttribPointer(a[0], a[1], gl.FLOAT, false, STRIDE * 4, off * 4); gl.vertexAttribDivisor(a[0], divisor); off += a[1];
     });
   }
@@ -693,6 +723,7 @@
     atlas = makeAtlas(); heads = makeHeads();
     // the names drawn in the scene: each cluster's, and a few papers' at a time, by their stars
     MODS.forEach(function (m, g) { var el = document.createElement("span"); el.className = "glabel"; el.textContent = m; el.style.color = MOD_NIGHT[m] || "#9ba8bb"; labels.appendChild(el); galLabels.push({ el: el, g: g }); });
+    (window.S2S_ASSETS ? window.S2S_ASSETS.names : []).forEach(function (nm) { var el = document.createElement("span"); el.className = "alabel"; el.textContent = nm; labels.appendChild(el); assetLabels.push({ el: el, w: 0 }); });
     for (var sl = 0; sl < SLOTS; sl++) { var se = document.createElement("span"); se.className = "slabel"; labels.appendChild(se); starLabels.push({ el: se, c: null, k: -1, w: 0, h: 0 }); }
   }
 
@@ -702,7 +733,7 @@
     var cw = Math.round(W * dpr), ch = Math.round(H * dpr);
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
     heroBottom = capHero.offsetTop + capHero.offsetHeight;
-    bandBottom = Math.max(capUni.offsetTop + capUni.offsetHeight, capWorld.offsetTop + capWorld.offsetHeight) + 14;
+    bandBottom = Math.max(capUni.offsetTop + capUni.offsetHeight, capAssets.offsetTop + capAssets.offsetHeight, capWorld.offsetTop + capWorld.offsetHeight) + 14;
     var portrait = W < H * 0.9;
     if (portrait !== portraitNow) { writeStars(portrait); gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferSubData(gl.ARRAY_BUFFER, 0, buf); }
   }
@@ -734,7 +765,7 @@
     API.p = p; API.frames++;
 
     var P = p; p = Math.min(1, P / STORY); // the Universe page's own story runs to STORY of the scroll; then the steps of how it works
-    var d = smooth(seg(p, T.dolly[0], T.dolly[1])), f = seg(p, T.fly[0], T.fly[1]), b = seg(p, T.burst[0], T.burst[1]), s = seg(p, T.split[0], T.split[1]), es = easeIO(s);
+    var d = smooth(seg(p, T.dolly[0], T.dolly[1])), f = seg(p, T.fly[0], T.fly[1]), a = seg(p, T.assets[0], T.assets[1]), b = seg(p, T.burst[0], T.burst[1]), s = seg(p, T.split[0], T.split[1]), es = easeIO(s);
 
     // the papers' camera: from three sheets under the title to the whole wall
     var aspect = W / H, focal = H / 2 / Math.tan((20 * Math.PI) / 180);
@@ -762,7 +793,8 @@
 
     // the words, each in its own time
     show(capHero, 1 - seg(p, 0.012, 0.05), -18);
-    show(capUni, seg(f, 0.84, 1) * (1 - seg(b, 0, 0.12)), 18);
+    show(capUni, seg(f, 0.84, 1) * (1 - seg(a, 0, 0.12)), 18);
+    show(capAssets, seg(a, 0.84, 1) * (1 - seg(b, 0, 0.12)), 18);
     show(capWorld, seg(b, 0.82, 1) * (1 - seg(s, 0, 0.25)), 18);
     // (the entrances' frames first; their words only once the scene has left the place where they stand)
     show(gates, seg(s, 0.45, 1), 0);
@@ -771,7 +803,17 @@
       textUni._t = tk;
       [textUni, textWorld].forEach(function (el) { el.style.opacity = gt.toFixed(3); el.style.transform = "translate3d(0," + ((1 - gt) * 16).toFixed(1) + "px,0)"; });
     }
-    var la = seg(f, 0.88, 1) * (1 - seg(b, 0, 0.1));
+    var la = seg(f, 0.88, 1) * (1 - seg(a, 0, 0.1));
+    // the assets: a grid in the band under the words, six across (three on a narrow screen); each named under it
+    var aCols = W < H * 0.9 ? 3 : 6, aRows = Math.ceil(12 / aCols), aTop = bandBottom, aBot = H - 18;
+    var aCh = (aBot - aTop) / aRows, aCw = Math.min((W * 0.94) / aCols, aCh * 1.5), aS = Math.min(aCw, aCh) * 0.3, aC = [W / 2, (aTop + aBot) / 2 - aCh * 0.06];
+    var aLa = smooth(seg(a, 0.72, 1)) * (1 - seg(b, 0, 0.12));
+    assetLabels.forEach(function (L, j) {
+      if (aLa < 0.002) return place(L.el, 0, 0, 0);
+      var cx = aC[0] + ((j % aCols) - (aCols - 1) / 2) * aCw, cy = aC[1] + (Math.floor(j / aCols) - (aRows - 1) / 2) * aCh;
+      if (!L.w) L.w = L.el.offsetWidth;
+      place(L.el, cx - L.w / 2, cy + aS * 1.42, aLa * 0.95);
+    });
     var nameRects = [];
     galLabels.forEach(function (L) {
       var q = S.gal[L.g]; if (!q.n) return place(L.el, 0, 0, 0);
@@ -832,6 +874,7 @@
       gl.uniform2f(u.uWorldC, worldC[0], worldC[1]); gl.uniform1f(u.uWorldS, worldS); gl.uniform1f(u.uDens, clamp(worldS / 30, 0.3, 1.35));
       gl.uniform1f(u.uYaw, 0.6 + t * 0.045 + p * 1.4); gl.uniform1f(u.uTilt, 0.5);
       gl.uniform3fv(u.uMod, colNight);
+      gl.uniform1f(u.uA, a); gl.uniform2f(u.uAC, aC[0], aC[1]); gl.uniform2f(u.uACell, aCw, aCh); gl.uniform1f(u.uAS, aS); gl.uniform1f(u.uACols, aCols); gl.uniform1f(u.uARows, aRows);
       return u;
     }
     if (f < 1) {
@@ -910,9 +953,10 @@
   // The stops (the owner, 2026-11-22: “每一页之间有严格一点的吸附感，现在很容易滑动到下一页”): the story rests only on these;
   // →/Space or ← go one stop, and a scroll let go anywhere between stops is brought to the nearest one.
   // (each of the five steps of how it works a stop of its own, where its node is fully lit: HOW, a fifth of it each)
-  var STOPS = [0, 0.13, 0.27, 0.42, 0.56, 0.655].concat([0, 1, 2, 3, 4].map(function (n) { return HOW[0] + (HOW[1] - HOW[0]) * (0.2 * n + 0.17); }), PAPER && PAPER.scored === false ? [] : [0.895], [0.98]);
+  // (the story's stops, of the whole scroll: the title, the wall, all the papers, the Universe, the 3D assets, the World; then how it works)
+  var STOPS = [0, 0.115, 0.237, 0.349, 0.458, 0.573, 0.655].concat([0, 1, 2, 3, 4].map(function (n) { return HOW[0] + (HOW[1] - HOW[0]) * (0.2 * n + 0.17); }), PAPER && PAPER.scored === false ? [] : [0.895], [0.98]);
   // back from the simulator (its first page, its end's “Start from the beginning”: js/feedback.js, opening): #how, how it works whole
-  window.addEventListener("load", function () { if (location.hash === "#how") setTimeout(function () { stopAt = 5; window.scrollTo(0, Math.round(STOPS[5] * lenNow())); }, 60); });
+  window.addEventListener("load", function () { if (location.hash === "#how") setTimeout(function () { stopAt = 6; window.scrollTo(0, Math.round(STOPS[6] * lenNow())); }, 60); });
   var stopAt = 0, lockUntil = 0, snapT = 0;
   function lenNow() { var r = track.getBoundingClientRect(); return r.height - H - (parseFloat(getComputedStyle(track).paddingTop) || 0); }
   function goStop(i) { stopAt = clamp(i, 0, STOPS.length - 1); lockUntil = performance.now() + 900; window.scrollTo({ top: Math.round(STOPS[stopAt] * lenNow()), behavior: reduce ? "auto" : "smooth" }); }
